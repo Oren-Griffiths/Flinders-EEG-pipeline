@@ -2,16 +2,18 @@
 global DataConfig
 
 % which experiment are we going to run?
-ConfigFileName = 'Config_WIMR_260821_TEST';
+ConfigFileName = 'WIMR_Config_testing';
 
 % what do we need to do?
 ModeToPerform = 'PostICA';
+
 % 'PreICA' = preICA preparations, including decomposition and plot ICA
 % 'PostICA' = remove ICA components, epoch and baseline
 
-%% change notes
-% 02.09.21 change removed dependency on PsychToolBox. Did use GetSecs and
-% now uses vanilla matlab "clock" function instead.
+ResetICAcomponents = 1; 
+% default should be to overwrite. 
+% 1 = overwrite ICAcomponents.xlsx file when you're in preICA mode. 
+% 0 = do not overwrite ICAcomponents.xls. 
 
 %% load analysis parameters
 % first patch together full destination of the config file and add access 
@@ -26,13 +28,13 @@ for k = 1:numel(Options.VariableTypes)
 end
 DataConfig = table2struct(readtable(ConfigFilePath, Options));
 
+ % feed in info about what you want the config file to contain or do.
+DataConfig.mode = ModeToPerform;
+DataConfig.ResetICAcomponents = ResetICAcomponents;
+
 % adjust the config data to suit our purposes. Essentially takes the data
 % from the config file and makes a structure of cell arrays (mostly 1 x 1). 
 DataConfig = adjustConfigData(DataConfig);
-
-% what do you want to do with that data? (mostly for reporting when/if it
-% crashes). 
-DataConfig.mode = ModeToPerform;
 
 % make standard AR parameter files (make this conditional on a "CustomAR"
 % field of DataConfig in moment. 
