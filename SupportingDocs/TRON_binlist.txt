@@ -1,0 +1,23 @@
+Bin 1
+SpeakNormal
+.{112}
+
+Bin 2 
+SpeakShift
+.{114}
+
+Bin 3
+ListenNormal
+.{122}
+
+Bin 4
+ListenShift
+.{124}
+
+Bin 5
+CuedNormal
+.{131}
+
+Bin 6
+CuedShift
+.{133}

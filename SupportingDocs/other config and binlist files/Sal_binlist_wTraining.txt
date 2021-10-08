@@ -1,0 +1,35 @@
+Bin 1
+NoCueUnsupported
+.{1001}
+
+Bin 2 
+ValidCueUnsupported
+.{1002}
+
+Bin 3
+InvalidCueUnsupported
+.{1003}
+
+Bin 4
+NoCueSupported
+.{1004}
+
+Bin 5
+ValidCueSupported
+.{1005}
+
+Bin 6
+InvalidCueSupported
+.{1006}
+
+Bin 7
+NoCuePractice
+.{1007}
+
+Bin 8
+ValidCuePractice
+.{1008}
+
+Bin 9
+InvalidCuePractice
+.{1009}
