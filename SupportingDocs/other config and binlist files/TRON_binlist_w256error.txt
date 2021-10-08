@@ -1,0 +1,23 @@
+Bin 1
+SpeakNormal
+.{112, 368, 624, 880}
+
+Bin 2 
+SpeakShift
+.{114, 370, 626, 882}
+
+Bin 3
+ListenNormal
+.{122, 378, 634, 890}
+
+Bin 4
+ListenShift
+.{124, 380, 636, 892}
+
+Bin 5
+CuedNormal
+.{131, 387, 643, 899}
+
+Bin 6
+CuedShift
+.{133, 389, 645, 901}
