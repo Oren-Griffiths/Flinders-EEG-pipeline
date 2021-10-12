@@ -13,7 +13,6 @@ function X6_ArtifactRejection_p(DataConfig,SUB, imageType)
 close all;
 clearvars -except DataConfig SUB imageType;
 
-try
     % Location of the main study directory
     DIR = fileparts(pwd)
     
@@ -95,15 +94,11 @@ try
         %End subject loop
     end
     
-    DataConfig.LastProcess = cellstr('X6_ArtifactRejection');
-    DataConfig.LastSUB = SUB(i); % last participant processed.
-    DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set');
+%     DataConfig.LastProcess = cellstr('X6_ArtifactRejection');
+%     DataConfig.LastSUB = SUB(i); % last participant processed.
+%     DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set');
     
-catch ME
-    display('Error in X6_ArtifactRejection. Workspace saved.');
-    save('Debug_workspace.mat');
-    rethrow(ME);
-end % end of TRY loop
+
 
 end
 %*************************************************************************************************************************************

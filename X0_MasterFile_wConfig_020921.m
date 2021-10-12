@@ -10,13 +10,14 @@ ModeToPerform = 'PostICA';
 % 'PreICA' = preICA preparations, including decomposition and plot ICA
 % 'PostICA' = remove ICA components, epoch and baseline
 
-ResetICAcomponents = 1; 
-% default should be to overwrite. 
-% 1 = overwrite ICAcomponents.xlsx file when you're in preICA mode. 
-% 0 = do not overwrite ICAcomponents.xls. 
+ResetICAcomponents = 1;
+% default should be to overwrite.
+% 1 = overwrite ICAcomponents.xlsx file when you're in preICA mode.
+% 0 = do not overwrite ICAcomponents.xlsx.
+% token change.
 
 %% load analysis parameters
-% first patch together full destination of the config file and add access 
+% first patch together full destination of the config file and add access
 % to all the subfunctions you're about to call.
 Current_File_Path = pwd;
 addpath('Functions');
@@ -28,19 +29,19 @@ for k = 1:numel(Options.VariableTypes)
 end
 DataConfig = table2struct(readtable(ConfigFilePath, Options));
 
- % feed in info about what you want the config file to contain or do.
+% feed in info about what you want the config file to contain or do.
 DataConfig.mode = ModeToPerform;
 DataConfig.ResetICAcomponents = ResetICAcomponents;
 
 % adjust the config data to suit our purposes. Essentially takes the data
-% from the config file and makes a structure of cell arrays (mostly 1 x 1). 
+% from the config file and makes a structure of cell arrays (mostly 1 x 1).
 DataConfig = adjustConfigData(DataConfig);
 
 % make standard AR parameter files (make this conditional on a "CustomAR"
-% field of DataConfig in moment. 
+% field of DataConfig in moment.
 
 if DataConfig.CustomAR{1} == 0
-CreateIndividualARfiles(DataConfig);
+    CreateIndividualARfiles(DataConfig);
 else
     % need to create four files on your own.
     % ICA_Prep_Values.xlsx
@@ -59,12 +60,12 @@ switch DataConfig.mode
         
         %% do the preprocessing via PREP pipeline (or equivalent if PREP is
         % excluded). Also, can't do this parallel, as PREP calls up a
-        % multithread loop, and those can't be nested. 
+        % multithread loop, and those can't be nested.
         Y1_preprocess_wPREP;
-
+        
         %% prepare for next step (can't update DataConfig in parallel).
-            DataConfig.LastProcess = cellstr('X1_PreProcess');
-            DataConfig.LastSuffix = cellstr('_ds_PREP.set');
+        DataConfig.LastProcess = cellstr('X1_PreProcess');
+        DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
         
         %% adjust events so they're on the correct timeline.
         tmpDataConfig = DataConfig;
@@ -73,10 +74,14 @@ switch DataConfig.mode
             SUB =  tmpDataConfig.SUB(loopIdx);
             X1b_fixEvents_p(tmpDataConfig, SUB);
         end
-
+        
         %% prepare for next step (can't update DataConfig in parallel).
-            DataConfig.LastProcess = cellstr('X1b_fixEvents');
-            DataConfig.LastSuffix = cellstr('_ds_PREP.set');
+        DataConfig.LastProcess = cellstr('X1b_fixEvents');
+        if isempty(DataConfig.EventsToAdjust)
+            DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
+        else
+            DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event.set');
+        end
         
         %% do the ICA prep
         tmpDataConfig = DataConfig;
@@ -87,8 +92,8 @@ switch DataConfig.mode
         end
         
         %% prepare for next step (can't update DataConfig in parallel).
-            DataConfig.LastProcess = cellstr('X2_icaprep');
-            DataConfig.LastSuffix = cellstr('_ds_PREP_ica_prep2.set');
+        DataConfig.LastProcess = cellstr('X2_icaprep');
+        DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event_icaPrep2.set');
         
         %% and run the ICA decomp
         tmpDataConfig = DataConfig;
@@ -99,8 +104,8 @@ switch DataConfig.mode
         end
         
         %% prepare for next step (can't update DataConfig in parallel).
-            DataConfig.LastProcess = cellstr('X3_RunICA');
-            DataConfig.LastSuffix = cellstr('_ds_PREP_ica_weighted.set');
+        DataConfig.LastProcess = cellstr('X3_RunICA');
+        DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event_icaWeighted.set');
         
         %% plot the topos separately (for some reason).
         tmpDataConfig = DataConfig;
@@ -112,8 +117,8 @@ switch DataConfig.mode
         
     case 'PostICA' % apply ICA
         %% prepare for next step (can't update DataConfig in parallel).
-            DataConfig.LastProcess = cellstr('X3b_PlotICAtopos');
-            DataConfig.LastSuffix = cellstr('_ds_PREP_ica_weighted.set');
+        DataConfig.LastProcess = cellstr('X3b_PlotICAtopos');
+        DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event_icaWeighted.set');
         
         %% remove the noisy components
         tmpDataConfig = DataConfig;
@@ -124,8 +129,8 @@ switch DataConfig.mode
         end
         
         %% prepare for next step (can't update DataConfig in parallel).
-            DataConfig.LastProcess = cellstr('X4_RemoveICA');
-            DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip.set');
+        DataConfig.LastProcess = cellstr('X4_RemoveICA');
+        DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip.set');
         
         %% bin the epochs defined earlier.
         tmpDataConfig = DataConfig;
@@ -136,21 +141,21 @@ switch DataConfig.mode
         end
         
         %% prepare for next step (can't update DataConfig in parallel).
-            DataConfig.LastProcess = cellstr('X5_BinEpochs');
-            DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch.set');
+        DataConfig.LastProcess = cellstr('X5_BinEpochs');
+        DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch.set');
         
         %% artifact rejection (according to config file).
         tmpDataConfig = DataConfig;
         totalSUBS = length(tmpDataConfig.SUB);
         for loopIdx = 1:totalSUBS
             SUB =  tmpDataConfig.SUB(loopIdx);
-            imageType = 'png'; % or 'pdf' but this fails in parallel mode because it demands too much memory. 
+            imageType = 'png'; % or 'pdf' but this fails in parallel mode because it demands too much memory.
             X6_ArtifactRejection_p(tmpDataConfig, SUB, imageType);
         end
-
+        
         %% prepare for next step (can't update DataConfig in parallel).
-            DataConfig.LastProcess = cellstr('X6_ArtifactRejection');
-            DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set');
+        DataConfig.LastProcess = cellstr('X6_ArtifactRejection');
+        DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set');
         
         %% and may as well extract the data here too.
         tmpDataConfig = DataConfig;
@@ -162,8 +167,8 @@ switch DataConfig.mode
         
 end
 
-% clock yields 6 element array of date/time info. 
-% element 4 is time in hours, 5 is minutes. 
+% clock yields 6 element array of date/time info.
+% element 4 is time in hours, 5 is minutes.
 currentTime = clock;
 % calculates minutes since midday/midnight.
 EndTime = currentTime(4)*60 + currentTime(5);

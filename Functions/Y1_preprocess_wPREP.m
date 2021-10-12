@@ -12,7 +12,6 @@ close all;
 clearvars -except DataConfig;
 SUB = DataConfig.SUB;
 
-try
     % find the directory one up from this file (for subject folders)
     DIR = fileparts(pwd);
     
@@ -40,10 +39,10 @@ try
         
         if isempty(DataConfig.LastProcess)
             % this is the first process for this file, so open the raw data.
-            if exist([Subject_Path  SUB{i} '.set']) == 2
+            if exist([Subject_Path  SUB{i} '_raw.set']) == 2
                 % you've already imported this data set so just start
                 % there.
-                EEG = pop_loadset( 'filename',[SUB{i} '.set'], 'filepath', Subject_Path);
+                EEG = pop_loadset( 'filename',[SUB{i} '_raw.set'], 'filepath', Subject_Path);
             else
                 switch DataConfig.RawFileType{1}
                     case '.bdf'
@@ -93,11 +92,12 @@ try
         % If file are e.g. "P17.bdf" then just adjust SUB cell array with
         % appropriate values.
         
-        EEG = pop_saveset( EEG, 'filename',[SUB{i} '.set'],'filepath',Subject_Path);
-        EEG = eeg_checkset( EEG );
+%         EEG = pop_saveset( EEG, 'filename',[SUB{i} '.set'],'filepath',Subject_Path);
+%         EEG = eeg_checkset( EEG );
         
         % Load the raw continuous EEG data file in e.g. "7.set" EEGLAB file format
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_raw'], 'gui', 'off');
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_raw'],...
+            'savenew',[Subject_Path SUB{i} '_raw.set'], 'gui', 'off');
         
         if DataConfig.DownSample{1} == EEG.srate
             % already at the desired sample rate so leave it be.
@@ -105,9 +105,11 @@ try
             % Downsample from the recorded sampling rate e.g. 2048 Hz to e.g. 256 Hz
             % to speed data processing (automatically applies the appropriate
             % low-pass anti-aliasing filter)
-            EEG = pop_resample( EEG, DataConfig.DownSample{1});
-            [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2,'setname',[SUB{i} '_ds'],'savenew',[Subject_Path SUB{i} '_raw_ds.set'] ,'gui','off');
+            EEG = pop_resample(EEG, DataConfig.DownSample{1});
         end
+        % save downsampled, or non-downsampled, as new data set. 
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2,'setname',[SUB{i} '_ds'],...
+            'savenew',[Subject_Path SUB{i} '_ds.set'] ,'gui','off');
         
         % For PREP, only calculate the HEOG and VEOG (no mastoid/average reference reference)
         % choose relevant channel montage.
@@ -124,7 +126,8 @@ try
         
         % Add channel location information corresponding to the 3-D coordinates of the electrodes based on 10-10 International System site locations
         EEG = pop_chanedit(EEG, 'lookup',[Current_File_Path filesep 'SupportingDocs' filesep DataConfig.ChanLocs{1}]);
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3, 'setname', [SUB{i} '_ds_rawref'], 'savenew', [Subject_Path SUB{i} '_ds_rawref.set'], 'gui', 'off');
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3, 'setname', [SUB{i} '_ds_addChans'], ...
+            'savenew', [Subject_Path SUB{i} '_ds_addChans.set'], 'gui', 'off');
         
         %% and now the PREP section
         % Used for basic cleaning, high pass filtering and detection and
@@ -188,9 +191,12 @@ try
         
         % Done with PREP.
         
-        
         % no filtering performed by PREP pipeline so do it here.
         % ERP CORE default settings: (non-causal Butterworth impulse response function, 0.1 Hz half-amplitude cut-off, 12 dB/oct roll-off)
+        
+        % save immediately post PREP
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 4, 'setname', [SUB{i} '_ds_addChans_PREP'], ...
+            'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP.set'], 'gui', 'off');
         
         % do simple FFT of pre-filtered data and save it for later drawing.
         tempvar = [];
@@ -205,8 +211,11 @@ try
         EEG  = pop_basicfilter( EEG,  DataConfig.KeyChans{1}:DataConfig.KeyChans{2} , 'Boundary', 'boundary', ...
             'Cutoff',  [DataConfig.HPfilter{1} DataConfig.LPfilter{1}], ...
             'Design', 'butter', 'Filter', 'bandpass', 'Order',  DataConfig.FiltOrder{1}, 'RemoveDC', 'on' );
-        % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_ref_bandpass.set'],'filepath',Subject_Path);
         
+        % save at the bandpass point.
+                [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 5, 'setname', [SUB{i} '_ds_addChans_PREP_bp'], ...
+            'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp.set'], 'gui', 'off');
+
         % do simple FFT of post-filtered data and save it for later
         filt_FFT = zeros(DataConfig.TotalChannels{1}, length(abs(SimpleFFT(EEG.data(1,:)))));
         for ThisChan = DataConfig.firstScalp:DataConfig.lastScalp
@@ -283,7 +292,11 @@ try
         % Add channel location information corresponding to the 3-D coordinates of the electrodes based on 10-10 International System site locations
         EEG = pop_chanedit(EEG, 'lookup',[Current_File_Path filesep 'SupportingDocs' filesep DataConfig.ChanLocs{1}]);
         % save the output.
-        EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_PREP.set'],'filepath',Subject_Path);
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 6, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs'], ...
+            'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp_refs.set'], 'gui', 'off');
+        
+        % old command doesn't udpate the name of the .set file internally.
+        % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_PREP.set'],'filepath',Subject_Path);
         
         %% do the visualizations for each subject and save them.
         
@@ -494,16 +507,6 @@ try
     
     % record the last process performed.
     DataConfig.LastProcess = cellstr('X1_PreProcess');
-    if DataConfig.PREP{1} == 1
-        DataConfig.LastSuffix = cellstr('_ds_PREP.set');
-    else
-        DataConfig.LastSuffix = cellstr('_ds_PREP.set');
-    end
-    
-catch ME
-    display('Error in Preprocessing. Workspace saved.');
-    % save('Debug_workspace.mat');
-    rethrow(ME);
-end
+    DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
 
 end

@@ -10,8 +10,6 @@ function X4_RemoveICA_p(DataConfig, SUB)
 close all;
 clearvars -except DataConfig SUB;
 
-
-try
     % Location of the main study directory
     DIR = fileparts(pwd)
     
@@ -42,8 +40,8 @@ try
         %Load list of ICA component(s) corresponding to ocular artifacts from Excel file ICA_Components.xlsx
         [ndata, ~, alldata] = xlsread([Current_File_Path filesep 'SupportingDocs' filesep 'ICA_Components.xlsx']);
         MaxNumComponents = size(alldata, 2);
-        for j = 1:length(alldata)
-            if isequal(SUB{i}, num2str(alldata{j,1}));
+        for j = 1:size(alldata,1)
+            if isequal(SUB{i}, num2str(alldata{j,1}))
                 NumComponents = 0;
                 for k = 2:MaxNumComponents
                     if ~isnan(alldata{j,k})
@@ -84,15 +82,9 @@ try
 
     end % End subject loop
     
-    DataConfig.LastProcess = cellstr('X4_RemoveICA');
-    DataConfig.LastSUB = SUB(i); % last participant processed.
-    DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip.set');
-    
-catch ME
-    display('Error in X4_RemoveICA. Workspace saved.');
-    save('Debug_workspace.mat');
-    rethrow(ME);
-end % end of TRY loop
+%     DataConfig.LastProcess = cellstr('X4_RemoveICA');
+%     DataConfig.LastSUB = SUB(i); % last participant processed.
+%     DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip.set');
 
 end
 %**********************************************************************************************************************************************************************

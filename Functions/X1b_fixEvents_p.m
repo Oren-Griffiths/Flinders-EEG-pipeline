@@ -12,7 +12,6 @@ function X1b_fixEvents_p(DataConfig, SUB)
 close all;
 clearvars -except DataConfig SUB;
 
-try
     % Location of the main study directory
     DIR = fileparts(pwd)
     
@@ -64,7 +63,7 @@ try
             end
             
             %Load the continuous EEG data file outputted from Script #1a in .set EEGLAB file format
-            [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_reref_ucbip_hpfilt_interp'], 'gui', 'off');
+            [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs'], 'gui', 'off');
             
             % So need to do something like this combo:
             for ThisEventType_idx = 1:numel(DataConfig.EventsToAdjust)
@@ -91,7 +90,7 @@ try
             end
             
             % format for creating a new .set file and saving it.
-            [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2, 'setname', [SUB{i} '_ds_reref_ucbip_hpfilt_interp_event'], 'savenew', [Subject_Path SUB{i} '_ds_reref_ucbip_hpfilt_interp_event.set'], 'gui', 'off');
+            [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event'], 'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp_refs_event.set'], 'gui', 'off');
             
         end % of the part to skip if no events to adjust
         
@@ -134,21 +133,7 @@ try
         
     end % of subject by subject loop
     
-    % record the last process performed.
-    if isempty(DataConfig.EventsToAdjust)
-        % Don't update either of these variables as nothing was done.
-        % DataConfig.LastProcess
-        % DataConfig.LastSuffix
-    else
-        DataConfig.LastProcess = cellstr('X1b_FixEvents');
-        DataConfig.LastSUB = SUB(i); % last participant processed.
-        DataConfig.LastSuffix = cellstr('_ds_reref_ucbip_hpfilt_interp_event.set');
-    end
-    
-catch ME
-    display('Error in 1b_EventFixing. Workspace saved.');
-    save('Debug_workspace.mat');
-    rethrow(ME);
-end
+    % record the last process performed. (pointless now with parallel
+    % execution as DataConfig is not a global or passed out).
 
 end % of function.

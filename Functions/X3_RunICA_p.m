@@ -24,8 +24,6 @@ function X3_RunICA_p(DataConfig,SUB)
 close all;
 clearvars -except DataConfig SUB;
 
-
-try
     % Location of the main study directory
     DIR = fileparts(pwd)
     
@@ -49,7 +47,7 @@ try
         % Load the semi-continuous EEG data file outputted from Script #2 in .set EEGLAB file format
         FileToOpen = [SUB{i} DataConfig.LastSuffix{1}];
         EEG = pop_loadset( 'filename', FileToOpen, 'filepath', Subject_Path);
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_PREP_ica_prep2'], 'gui', 'off');
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event_icaPrep2'], 'gui', 'off');
         
         %Compute ICA weights with runICA (only easy option for Windows under
         %EEGlab), and it will choose others if available anyway.  
@@ -60,14 +58,14 @@ try
         EffectiveRank = rank(EEG.data(ChansForICA,:));
         
         EEG = pop_runica(EEG,'extended',1,'chanind', ChansForICA, 'pca',EffectiveRank);
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2, 'setname', [SUB{i} '_ds_PREP_ica_prep2_weighted'], 'savenew', [Subject_Path SUB{i} '_ds_reref_ucbip_hpfilt_interp_event_ica_prep2_weighted.set'], 'gui', 'off');
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event_icaPrep2_weighted'], 'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp_refs_event_icaPrep2_weighted.set'], 'gui', 'off');
         
         %Load the continuous EEG data file outputted from Script #1 in .set EEGLAB file format
-            EEG = pop_loadset( 'filename', [SUB{i} '_ds_PREP.set'], 'filepath', Subject_Path);
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3, 'setname', [SUB{i} '_ds_PREP'], 'gui', 'off');
+        EEG = pop_loadset( 'filename', [SUB{i} '_ds_addChans_PREP_bp_refs_event.set'], 'filepath', Subject_Path);
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event'], 'gui', 'off');
         
         %Transfer ICA weights to the continuous EEG data file (e.g., without the break periods and noisy segments of data removed)
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 4, 'setname', [SUB{i} '_ds_PREP_ica_weighted'], 'savenew', [Subject_Path SUB{i} '_ds_PREP_ica_weighted.set'], 'gui', 'off');
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 4, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event_icaWeighted'], 'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp_refs_event_icaWeighted.set'], 'gui', 'off');
         ALLEEG(CURRENTSET).icachansind = ALLEEG(2).icachansind;
         ALLEEG(CURRENTSET).icaweights = ALLEEG(2).icaweights;
         ALLEEG(CURRENTSET).icawinv = ALLEEG(2).icawinv;
@@ -76,18 +74,9 @@ try
         % make sure current EEG is populated with this new info
         EEG = ALLEEG(CURRENTSET);
         % save the newly complete file to disk.
-        EEG = pop_saveset( EEG, 'filename', [SUB{i} '_ds_PREP_ica_weighted.set'],'filepath', Subject_Path);
+        EEG = pop_saveset( EEG, 'filename', [SUB{i} '_ds_addChans_PREP_bp_refs_event_icaWeighted.set'],'filepath', Subject_Path);
 
     end % End subject loop
-    
-    DataConfig.LastProcess = cellstr('X3_RunICA');
-    DataConfig.LastSUB = SUB(i); % last participant processed.
-    DataConfig.LastSuffix = cellstr('_ds_PREP_ica_weighted.set');
-    
-catch ME
-    display('Error in X3_RunICA. Workspace saved.');
-    save('Debug_workspace.mat');
-    rethrow(ME);
-end % end of TRY loop
+
 end
 %***********************************************************************************************************************************************

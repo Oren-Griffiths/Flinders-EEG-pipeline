@@ -15,7 +15,7 @@ function X2_icaprep_p(DataConfig, SUB)
 close all;
 clearvars -except DataConfig SUB;
 
-try
+
     % Location of the main study directory
     DIR = fileparts(pwd)
     
@@ -39,7 +39,7 @@ try
         % Load the continuous EEG data file outputted from Script #1 in .set EEGLAB file format
         FileToOpen = [SUB{i} DataConfig.LastSuffix{1}];
         EEG = pop_loadset( 'filename', FileToOpen, 'filepath', Subject_Path);
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_PREP'], 'gui', 'off');
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event'], 'gui', 'off');
         czPreClean = EEG.data(DataConfig.cz_chan, :); % grab dirty data for later plotting.
         
         %Remove segments of EEG during the break periods in between trial blocks (defined as 5 seconds or longer in between successive stimulus event codes)
@@ -70,7 +70,7 @@ try
         
         % Excel file currently has sensible defaults (800, 2000, 100).
         [ndata, ~, alldata] = xlsread([Current_File_Path filesep 'SupportingDocs' filesep 'ICA_Prep_Values']);
-        for j = 1:length(alldata)
+        for j = 1:size(alldata,1)
             if isequal(SUB{i},num2str(alldata{j,1}))
                 AmpthValue = alldata{j,2};
                 WindowValue = alldata{j,3};
@@ -80,7 +80,7 @@ try
         
         % Delete segments of the EEG exceeding the thresholds defined above
         EEG = pop_continuousartdet( EEG, 'ampth', AmpthValue, 'winms', WindowValue, 'stepms', StepValue, 'chanArray', DataConfig.KeyChans{1}:DataConfig.KeyChans{2}, 'review', 'off');
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3, 'setname', [SUB{i} '_ds_PREP_ica_prep2'], 'savenew', [Subject_Path SUB{i} '_ds_PREP_ica_prep2.set'], 'gui', 'off');
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event_icaPrep2'], 'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp_refs_event_icaPrep2.set'], 'gui', 'off');
         czPostClean = EEG.data(DataConfig.cz_chan, :); % grab clean data for later plotting.
         
         % plot and save the degree of cleaning (stretching to match lengths)
@@ -99,15 +99,6 @@ try
         close all
         
     end  %End of subject loop
-    
-    DataConfig.LastProcess = cellstr('X2_icaprep');
-    DataConfig.LastSUB = SUB(i); % last participant processed.
-    DataConfig.LastSuffix = cellstr('_ds_PREP_ica_prep2.set');
-    
-catch ME
-    display('Error in X2_icaprep. Workspace saved.');
-    save('Debug_workspace.mat');
-    rethrow(ME);
-end % end of TRY loop
+
 end
 %*************************************************************************************************************************************

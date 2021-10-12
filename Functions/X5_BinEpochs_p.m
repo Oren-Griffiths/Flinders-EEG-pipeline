@@ -10,7 +10,7 @@ function X5_binEpochs_p(DataConfig, SUB)
 close all;
 clearvars -except DataConfig SUB;
 
-try
+
     % Location of the main study directory
     DIR = fileparts(pwd)
     
@@ -67,14 +67,9 @@ try
         
     end % End subject loop
     
-    DataConfig.LastProcess = cellstr('X5_BinEpochs');
-    DataConfig.LastSUB = SUB(i); % last participant processed.
-    DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch.set');
+%     DataConfig.LastProcess = cellstr('X5_BinEpochs');
+%     DataConfig.LastSUB = SUB(i); % last participant processed.
+%     DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch.set');
     
-catch ME
-    display('Error in X5_BinEpochs. Workspace saved.');
-    save('Debug_workspace.mat');
-    rethrow(ME);
-end % end of TRY loop
 end % end of function.
 %**********************************************************************************************************************************************************************
