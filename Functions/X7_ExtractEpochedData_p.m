@@ -64,10 +64,12 @@ for i = 1:length(SUB)
         % Loop through the possible flag values and bin values.
         for ThisCell = 1:numel(FlagsThisTrial_cell)
             if double(any(FlagsThisTrial_cell{ThisCell})) > 0
+                % exclude this trial as there's an artefact. 
                 FlaggedEpochs(ThisTrial) = 0;
             end
-            if EpochBins(ThisTrial) > 0 % Bin number already found, so skip this.
-            else
+            if EpochBins(ThisTrial) > 0 
+            % Bin number already found, so skip this check. 
+            else % look for a bin number. 
                 if BinThisCell_cell{ThisCell} > 0
                     EpochBins(ThisTrial) = double(BinThisCell_cell{ThisCell});
                 end
@@ -86,7 +88,10 @@ for i = 1:length(SUB)
         for idx = 1:length(BinIDs')
             ThisBin = BinIDs(idx);
             disp(['Parsing bin number ' num2str(ThisBin)]);
-            GoodTrials(ThisBin).data = EEG.data(:,:,GoodEpochBins == ThisBin);
+            % find artefact-free bins that I want to scoop up.
+            epochsToTake = GoodEpochBins == ThisBin; 
+            % then scoop them up. 
+            GoodTrials(ThisBin).data = double(TotalGoodTrials(:,:,epochsToTake));
             GoodTrials(ThisBin).ID = ThisBin;
         end
     else % no passing trials, so just note which events occured with 0 data

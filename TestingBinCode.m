@@ -12,37 +12,32 @@ Cz = 48;
 Erg1 = 72; 
 Erg2 = 73; 
 Bin = 1;
+avFCz = [ 11, 38, 46, 47, 48];
 
 % load the outputted data in matlab format. 
 load([testFolder filesep testFile_mat]);
 % creates structure "GoodTrials"
 % load the raw data in EEGlab format.
-EEG= pop_loadset(testFile_EEG, testFolder);
+EEG = pop_loadset(testFile_EEG, testFolder);
 
-% plot bin X at FCz for both files.
-dataToPlot1 = squeeze(mean(GoodTrials(Bin).data(FCz,:,:),3))';
 % generate an x-axis for plotting.
-times = ([1:length(dataToPlot1)].*1/256) - 0.2;
-figure; plot(times,dataToPlot1);
-title('Extracted_Bin1data');
+times = EEG.times + 500; 
+% times = ([1:length(dataToPlot1)].*1/EEG.srate) - 0.2;
 
-RawGoodTrials = GoodTrials;
-
+keyPeriod = (times > -200 & times < 800);
 
 for Bin = 1:6
-dataToPlot1 = squeeze(mean(RawGoodTrials(Bin).data(Cz,:,:),3))';
-dataToPlot2 = squeeze(mean(GoodTrials(Bin).data(Cz,:,:),3))';
-dataToPlot3 = squeeze(mean(EEG.data(Cz,:,:),3))';
+    temp = squeeze(mean(GoodTrials(Bin).data(Erg1,keyPeriod,:),1));
+    dataToPlot2 = mean(temp,2);
+    temp = squeeze(mean(EEG.data(Erg1,keyPeriod,:),1));
+    dataToPlot3 = mean(temp,2);
+timesToPlot = times(keyPeriod);
 figure;
 hold on
-line(times, dataToPlot1, 'Color', 'r');
-line(times, dataToPlot2, 'Color', 'b');
-line(times, dataToPlot3, 'Color', 'black'); 
+line(timesToPlot, dataToPlot2, 'Color', 'blue');
+line(timesToPlot, dataToPlot3, 'Color', 'black'); 
 hold off
+title(['Bin_' num2str(Bin)]);
+saveas(gcf,['Bin_' num2str(Bin) '_Erg1.png']); 
 end
-%
-% dataToPlot2 = squeeze(mean(EEG.data(FCz,:,:),3));
-% times = ([1:length(dataToPlot2)].*1/256) - 0.2;
-% figure; plot(times,dataToPlot2);
-% title('EEGlab_Bin1data');
 

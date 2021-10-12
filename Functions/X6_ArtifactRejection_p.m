@@ -14,7 +14,7 @@ close all;
 clearvars -except DataConfig SUB imageType;
 
     % Location of the main study directory
-    DIR = fileparts(pwd)
+    DIR = fileparts(pwd);
     
     % location of preprocessing files.
     Current_File_Path = pwd;
@@ -37,7 +37,8 @@ clearvars -except DataConfig SUB imageType;
         Subject_Path = [DIR filesep SUB{i} filesep];
         
         %Load the epoched EEG data file outputted from Script #5 in .set EEGLAB file format
-        EEG = pop_loadset( 'filename', [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch.set'], 'filepath', Subject_Path);
+        FileToOpen = [SUB{i} DataConfig.LastSuffix{1}];
+        EEG = pop_loadset( 'filename', FileToOpen, 'filepath', Subject_Path);
         [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch'], 'gui', 'off');
         
         %%
@@ -59,10 +60,9 @@ clearvars -except DataConfig SUB imageType;
         end
         
         EEG  = pop_artextval( EEG , 'Channel',  Channels, 'Flag', [1 2], 'Threshold', [ThresholdMinimum ThresholdMaximum], 'Twindow', [TimeWindowMinimum  TimeWindowMaximum] );
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3, 'setname', [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar'], 'gui', 'off');
-        setFilename = [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set'];
-        EEG = pop_saveset( EEG, 'filename', setFilename ,'filepath', Subject_Path);
-        
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3, 'setname', [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar'],...
+             'savenew', [Subject_Path filesep SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set'], 'gui', 'off');
+
         %% apply blink filter if needed (and requested in config file).
         if DataConfig.RemoveBlinks{1} == 1
             DimensionsOfFile3 = size(alldata3);
@@ -78,9 +78,8 @@ clearvars -except DataConfig SUB imageType;
             end
             
             EEG  = pop_artmwppth( EEG , 'Channel',  Channel, 'Flag', [1 4], 'Threshold', Threshold, 'Twindow', [TimeWindowMinimum  TimeWindowMaximum], 'Windowsize', WindowSize, 'Windowstep', WindowStep );
-            [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 4, 'setname', [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar'], 'gui', 'off');
-            setFilename = [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set'];
-            EEG = pop_saveset( EEG, 'filename', setFilename ,'filepath', Subject_Path);
+            [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 4, 'setname', [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar'],...
+                   'savenew', [Subject_Path filesep SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set'], 'gui', 'off');
         end % checking whether to apply blink filter.
         
         %% plot the number of trials rejected, which channels, etc.
@@ -91,14 +90,8 @@ clearvars -except DataConfig SUB imageType;
         % Subject_Path = [fileparts(pwd) '\102\'];
         DrawARfigs(data,SVT,chanlocs, Subject_Path, imageType);
         
-        %End subject loop
-    end
-    
-%     DataConfig.LastProcess = cellstr('X6_ArtifactRejection');
-%     DataConfig.LastSUB = SUB(i); % last participant processed.
-%     DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set');
-    
-
+       
+    end   %End subject loop
 
 end
 %*************************************************************************************************************************************

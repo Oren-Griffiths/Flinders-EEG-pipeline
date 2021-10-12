@@ -35,15 +35,16 @@ try
     DataConfig.BinListing = cellstr(strtrim(DataConfig.BinListing));
     DataConfig.RawFileType = cellstr(strtrim(DataConfig.RawFileType));
     DataConfig.ReReference = cellstr(strtrim(DataConfig.ReReference));
-    DataConfig.PREP = cellstr(strtrim(DataConfig.PREP));
-    % TotalChannels. Take string, make numeric, place in cell.
-    % same for DownSample
-    % Same for BadChanThreshold
-    % same for timeshift.
-    % same for rawSrate
-    % same for srate
+    
+    % Take string, make numeric, place in cell.
     DataConfig.TotalChannels = num2cell(str2num(DataConfig.TotalChannels));
-    DataConfig.DownSample = num2cell(str2num(DataConfig.DownSample));
+    if isempty(DataConfig.DownSample)
+        % if no value supplied, just put in the raw sample rate and no
+        % downsampling will occur.
+        DataConfig.DownSample = num2cell(str2num(DataConfig.rawSrate));
+    else
+        DataConfig.DownSample = num2cell(str2num(DataConfig.DownSample));
+    end
     DataConfig.BadChanThreshold = num2cell(str2num(DataConfig.BadChanThreshold));
     DataConfig.TimeShift = num2cell(str2num(DataConfig.TimeShift));
     DataConfig.rawSrate = num2cell(str2num(DataConfig.rawSrate));
@@ -52,6 +53,7 @@ try
     DataConfig.FiltOrder = num2cell(str2num(DataConfig.FiltOrder));
     DataConfig.RemoveBlinks = num2cell(str2num(DataConfig.RemoveBlinks));
     DataConfig.CustomAR =  num2cell(str2num(DataConfig.CustomAR));
+    DataConfig.PREP = num2cell(str2num(DataConfig.PREP));
 %     if ~isempty(DataConfig.srate)
 %         DataConfig.srate = num2cell(str2num(DataConfig.srate)); % not a typo; current srate is rawSrate if loading the file new.
 %     else % if it's empty put in the raw sampling rate

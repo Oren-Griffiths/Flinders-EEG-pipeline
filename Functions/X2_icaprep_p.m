@@ -17,7 +17,7 @@ clearvars -except DataConfig SUB;
 
 
     % Location of the main study directory
-    DIR = fileparts(pwd)
+    DIR = fileparts(pwd);
     
     % location of preprocessing files.
     Current_File_Path = pwd;

@@ -32,7 +32,7 @@ clearvars -except DataConfig SUB;
         %Load the continuous EEG data file containing the ICA weights outputted from Script #3 in .set EEGLAB file format
         FileToOpen = [SUB{i} DataConfig.LastSuffix{1}];
         EEG = pop_loadset( 'filename', FileToOpen, 'filepath', Subject_Path);
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',[SUB{i} '_ds_PREP_ica_weighted'], 'gui','off');
+        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'setname',[SUB{i} '_ds_addChans_PREP_bp_refs_event_icaWeighted'], 'gui','off');
         
         % grab the adjusted VEOG (Fp1) data for output figure
         rawVEOG = EEG.data(DataConfig.Fp1,:);
@@ -72,7 +72,7 @@ clearvars -except DataConfig SUB;
         
         % draw and output the corrected VEOG against the raw VEOG
         time = [1:size(EEG.data, 2)];
-        figure
+        figure;
         
        plot(time, rawVEOG, time, corrVEOG);
        title('Fp1: RawVEOG = blue,CorrectedVEOG = orange');
@@ -81,10 +81,6 @@ clearvars -except DataConfig SUB;
        save2pdf([Subject_Path filesep 'Figures' filesep 'X4_' SUB{i} '_RawVsCorrected_VEOG.pdf']);
 
     end % End subject loop
-    
-%     DataConfig.LastProcess = cellstr('X4_RemoveICA');
-%     DataConfig.LastSUB = SUB(i); % last participant processed.
-%     DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip.set');
 
 end
 %**********************************************************************************************************************************************************************

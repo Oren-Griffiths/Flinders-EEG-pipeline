@@ -10,7 +10,6 @@ function X5_binEpochs_p(DataConfig, SUB)
 close all;
 clearvars -except DataConfig SUB;
 
-
     % Location of the main study directory
     DIR = fileparts(pwd)
     
@@ -48,7 +47,6 @@ clearvars -except DataConfig SUB;
                 end %cycling vertically through candidate events.
             end % label by label loop
         end
-        
         
         %Create EEG Event List containing a record of all event codes and their timing
         EEG  = pop_creabasiceventlist( EEG , 'AlphanumericCleaning', 'on', 'BoundaryNumeric', { -99 }, 'BoundaryString', { 'boundary' }, 'Eventlist', [Subject_Path SUB{i} '_Eventlist.txt'] );

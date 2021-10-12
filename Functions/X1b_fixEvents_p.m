@@ -1,4 +1,4 @@
-function X1b_fixEvents_p(DataConfig, SUB)
+
 % updated for multithread 17.08.21
 % updated to allow relocating file to Functions folder. 18.08.21
 
@@ -7,13 +7,13 @@ function X1b_fixEvents_p(DataConfig, SUB)
 % catch this early. Prints .csv for raw values and a separate .csv for
 % trigger values that are > 256 and can be corrected to 0-255 range. 
 
-
+function X1b_fixEvents_p(DataConfig, SUB)
 % initialize
 close all;
 clearvars -except DataConfig SUB;
 
     % Location of the main study directory
-    DIR = fileparts(pwd)
+    DIR = fileparts(pwd);
     
     % location of preprocessing files.
     Current_File_Path = pwd;
@@ -70,7 +70,7 @@ clearvars -except DataConfig SUB;
                 ThisEventType = DataConfig.EventsToAdjust{ThisEventType_idx}; % a character indicating the relevant event label (often numeric label).
                 event_index = find(strcmp({EEG.event.type}, ThisEventType) == 1); % find instances of that label.
                 for InstanceOfEvent = 1:length(event_index) % loop through instances of that label.
-                    EEG.event(InstanceOfEvent).latency = EEG.event(InstanceOfEvent).latency + ...
+                    EEG.event(event_index(InstanceOfEvent)).latency = EEG.event(InstanceOfEvent).latency + ...
                         EEG.srate *DataConfig.TimeShift{1} * 1000; % adjust latency of that event.
                 end % instance by instance loop
                 DataConfig.EventsAdjusted{ThisEventType_idx} = sum(event_index); % record how many events were changed, ordered by type.
