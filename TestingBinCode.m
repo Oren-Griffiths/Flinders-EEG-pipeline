@@ -8,7 +8,7 @@ FCz = 47;
 Cz = 48;
 Erg1 = 72; 
 Erg2 = 73; 
-Bin = 2;
+Bin = 1;
 
 % load the outputted data in matlab format. 
 load([testFolder filesep testFile_mat]);
@@ -24,19 +24,19 @@ figure; plot(times,dataToPlot1);
 title('Extracted_Bin1data');
 
 RawGoodTrials = GoodTrials;
-clear GoodTrials;
-% ok, now execute X7 line by line.
-% done. 
 
-dataToPlot1 = squeeze(mean(RawGoodTrials(Bin).data(Erg1,:,:),3))';
-dataToPlot2 = squeeze(mean(GoodTrials(Bin).data(Erg1,:,:),3))';
-dataToPlot3 = squeeze(mean(EEG.data(Erg1,:,:),3))';
+
+for Bin = 1:6
+dataToPlot1 = squeeze(mean(RawGoodTrials(Bin).data(FCz,:,:),3))';
+dataToPlot2 = squeeze(mean(GoodTrials(Bin).data(FCz,:,:),3))';
+dataToPlot3 = squeeze(mean(EEG.data(FCz,:,:),3))';
 figure;
 hold on
 line(times, dataToPlot1, 'Color', 'r');
 line(times, dataToPlot2, 'Color', 'b');
 line(times, dataToPlot3, 'Color', 'black'); 
 hold off
+end
 %
 % dataToPlot2 = squeeze(mean(EEG.data(FCz,:,:),3));
 % times = ([1:length(dataToPlot2)].*1/256) - 0.2;
