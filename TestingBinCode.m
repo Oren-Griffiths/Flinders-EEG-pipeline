@@ -3,6 +3,9 @@ testFolder= [fileparts(pwd) filesep '810'];
 testFile_EEG = ['810_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set'];
 testFile_mat = ['810_ARcorrectedBins.mat'];
 
+% open eeglab to access those functions
+eeglab;
+
 % channels to run test on.
 FCz = 47; 
 Cz = 48;
@@ -27,9 +30,9 @@ RawGoodTrials = GoodTrials;
 
 
 for Bin = 1:6
-dataToPlot1 = squeeze(mean(RawGoodTrials(Bin).data(FCz,:,:),3))';
-dataToPlot2 = squeeze(mean(GoodTrials(Bin).data(FCz,:,:),3))';
-dataToPlot3 = squeeze(mean(EEG.data(FCz,:,:),3))';
+dataToPlot1 = squeeze(mean(RawGoodTrials(Bin).data(Cz,:,:),3))';
+dataToPlot2 = squeeze(mean(GoodTrials(Bin).data(Cz,:,:),3))';
+dataToPlot3 = squeeze(mean(EEG.data(Cz,:,:),3))';
 figure;
 hold on
 line(times, dataToPlot1, 'Color', 'r');
