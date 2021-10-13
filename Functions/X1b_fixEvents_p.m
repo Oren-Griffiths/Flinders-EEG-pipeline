@@ -24,13 +24,7 @@ clearvars -except DataConfig SUB;
     % Key input and preprocess loop
     %Loop through each subject listed in SUB
     for i = 1:length(SUB)
-        
-        if isempty(DataConfig.EventsToAdjust)
-            % no events to adjust so will be empty. So just update process
-            % at very end, but don't open or save a file.
-            
-        else % some events to adjust.
-            
+
             % Open EEGLAB and ERPLAB Toolboxes
             % Acts as initialization of the relevant variables per participant.
             [ALLEEG EEG CURRENTSET ALLCOM] = eeglab;
@@ -156,12 +150,10 @@ clearvars -except DataConfig SUB;
                     end % of check for different table heights. 
                 end % of bin by bin loop.
 
-            end
+            end % of the part to skip if no events to adjust
             % format for creating a new .set file and saving it.
             [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event'], 'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp_refs_event.set'], 'gui', 'off');
-            
-        end % of the part to skip if no events to adjust
-        
+  
         % and even if it is skipped, output a table of the number of events
         % in a .txt file. But exclude 0,1, 256 codes which are just noise.
         disp('Calculating and reporting event tallies.');
@@ -176,29 +168,35 @@ clearvars -except DataConfig SUB;
         goodCodes = ~(nanCodes | badCodes);
         eventTable = eventTable(goodCodes,:);
         % remove unnecessary fields.
-        eventTable = removevars(eventTable, {'type', 'edftype', 'latency', ...
-             'urevent'});
-        for ThisRow = 1:height(eventTable)
-            if eventTable.codes(ThisRow) > 256 
-                eventTable.corrCodes(ThisRow) = eventTable.codes(ThisRow) - 256;
+        eventTable = table(eventTable.codes, 'VariableNames', {'codes'});
+        if height(eventTable) < 1
+            % for text triggers (in .xdf files) there will be no
+            % "goodCodes" as all text will be coded as a NaN. So no point
+            % doing tallies. Just skip over everything.
+        else
+            for ThisRow = 1:height(eventTable)
+                if eventTable.codes(ThisRow) > 256
+                    eventTable.corrCodes(ThisRow) = eventTable.codes(ThisRow) - 256;
+                else
+                    eventTable.corrCodes(ThisRow) = eventTable.codes(ThisRow);
+                end
             end
-        end
-        
-        % count the unique values and report them as .csv files.
-        [C,ia,ic] = unique(eventTable.codes);
-        code_counts = accumarray(ic,1);
-        countsPerCode = array2table([C, code_counts]);
-        countsPerCode.Properties.VariableNames(1:2) = {'event','count'};
-        outFileName = [Subject_Path SUB{i} '_eventCounts.csv'];
-        writetable(countsPerCode, outFileName);
-        % do the same, but with 256 adjustment. 
-        [C,ia,ic] = unique(eventTable.corrCodes);
-        code_counts = accumarray(ic,1);
-        countsPerCorrCode = array2table([C, code_counts]);
-        countsPerCorrCode.Properties.VariableNames(1:2) = {'event','count'};
-        outFileName= [Subject_Path SUB{i} '_eventCountsWith256Correction.csv'];
-        writetable(countsPerCorrCode, outFileName);
-        
+            
+            % count the unique values and report them as .csv files.
+            [C,ia,ic] = unique(eventTable.codes);
+            code_counts = accumarray(ic,1);
+            countsPerCode = array2table([C, code_counts]);
+            countsPerCode.Properties.VariableNames(1:2) = {'event','count'};
+            outFileName = [Subject_Path SUB{i} '_eventCounts.csv'];
+            writetable(countsPerCode, outFileName);
+            % do the same, but with 256 adjustment.
+            [C,ia,ic] = unique(eventTable.corrCodes);
+            code_counts = accumarray(ic,1);
+            countsPerCorrCode = array2table([C, code_counts]);
+            countsPerCorrCode.Properties.VariableNames(1:2) = {'event','count'};
+            outFileName= [Subject_Path SUB{i} '_eventCountsWith256Correction.csv'];
+            writetable(countsPerCorrCode, outFileName);
+        end % of skipping over tallies when text codes are used. 
     end % of subject by subject loop
     
     % record the last process performed. (pointless now with parallel

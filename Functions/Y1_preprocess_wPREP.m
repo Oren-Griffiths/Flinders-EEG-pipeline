@@ -92,11 +92,6 @@ SUB = DataConfig.SUB;
         % If file are e.g. "P17.bdf" then just adjust SUB cell array with
         % appropriate values.
         
-        % Load the raw continuous EEG data file in e.g. "7.set" EEGLAB file format
-        % Nope, no longer saving raw as too often >2gb so will fail.
-        % [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_raw'],...
-        % 'savenew',[Subject_Path SUB{i} '_raw.set'], 'gui', 'off');
-        
         if DataConfig.DownSample{1} == EEG.srate
             % already at the desired sample rate so leave it be.
         else

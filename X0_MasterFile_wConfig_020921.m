@@ -2,10 +2,10 @@
 global DataConfig
 
 % which experiment are we going to run?
-ConfigFileName = 'WIMR_Config_testing';
+ConfigFileName = 'Sal_test';
 
 % what do we need to do?
-ModeToPerform = 'PostICA';
+ModeToPerform = 'PreICA';
 % 'PreICA' = preICA preparations, including decomposition and plot ICA
 % 'PostICA' = remove ICA components, epoch and baseline
 
@@ -60,7 +60,7 @@ switch DataConfig.mode
         %% do the preprocessing via PREP pipeline (or equivalent if PREP is
         % excluded). Also, can't do this parallel, as PREP calls up a
         % multithread loop, and those can't be nested.
-        Y1_preprocess_wPREP;
+        % Y1_preprocess_wPREP;
         
         %% prepare for next step (can't update DataConfig in parallel).
         DataConfig.LastProcess = cellstr('X1_PreProcess');
@@ -69,7 +69,7 @@ switch DataConfig.mode
         %% adjust events so they're on the correct timeline.
         tmpDataConfig = DataConfig;
         totalSUBS = length(tmpDataConfig.SUB);
-        parfor loopIdx = 1:totalSUBS
+        for loopIdx = 1:totalSUBS
             SUB =  tmpDataConfig.SUB(loopIdx);
             X1b_fixEvents_p(tmpDataConfig, SUB);
         end
