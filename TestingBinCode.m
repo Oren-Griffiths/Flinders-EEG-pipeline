@@ -21,15 +21,15 @@ load([testFolder filesep testFile_mat]);
 EEG = pop_loadset(testFile_EEG, testFolder);
 
 % generate an x-axis for plotting.
-times = EEG.times + 500; 
+times = EEG.times; 
 % times = ([1:length(dataToPlot1)].*1/EEG.srate) - 0.2;
 
-keyPeriod = (times > -200 & times < 800);
+keyPeriod = (times > -800 & times < 800);
 
 for Bin = 1:6
-    temp = squeeze(mean(GoodTrials(Bin).data(Erg1,keyPeriod,:),1));
+    temp = squeeze(mean(GoodTrials(Bin).data(avFCz,keyPeriod,:),1));
     dataToPlot2 = mean(temp,2);
-    temp = squeeze(mean(EEG.data(Erg1,keyPeriod,:),1));
+    temp = squeeze(mean(EEG.data(avFCz,keyPeriod,:),1));
     dataToPlot3 = mean(temp,2);
 timesToPlot = times(keyPeriod);
 figure;
@@ -38,6 +38,6 @@ line(timesToPlot, dataToPlot2, 'Color', 'blue');
 line(timesToPlot, dataToPlot3, 'Color', 'black'); 
 hold off
 title(['Bin_' num2str(Bin)]);
-saveas(gcf,['Bin_' num2str(Bin) '_Erg1.png']); 
+saveas(gcf,['Bin_' num2str(Bin) '_avFCz.png']); 
 end
 

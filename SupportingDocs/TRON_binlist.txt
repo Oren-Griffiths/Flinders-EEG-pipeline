@@ -16,8 +16,8 @@ ListenShift
 
 Bin 5
 CuedNormal
-.{131}
+.{132}
 
 Bin 6
 CuedShift
-.{133}
+.{134}

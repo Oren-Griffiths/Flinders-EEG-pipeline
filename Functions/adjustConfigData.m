@@ -102,24 +102,7 @@ try
     else % nothing there, just switch it to an empty cell.
         DataConfig.EventsToAdjust = {};
     end
-    
-%     % Bins. Is a char (or empty char). Needs to be an empty cell, a
-%     % 1x1 cell (with num inside) or a 1 x X cell (with nums inside).
-%     if ~isempty(DataConfig.Bins)
-%         % there's something there to ajust.
-%         if ~isempty(strfind(DataConfig.Bins, ';'))
-%             % 2 or more properly formatted entries.
-%             DataConfig.Bins = strsplit(DataConfig.Bins, ';');
-%             for k = 1:length(DataConfig.Bins)
-%                 DataConfig.Bins{k} = str2num(DataConfig.Bins{k});
-%             end
-%         else % 1 entry. Make it numeric and save it in a cell.
-%             DataConfig.Bins = num2cell(str2num(DataConfig.Bins));
-%         end
-%     else % nothing there, just switch it to an empty cell.
-%         DataConfig.Bins = {};
-%     end
-    
+
     % RelevantCodes" variable.
     % Is a char (or empty char). Needs to be an empty cell, a
     % 1x1 cell (with num inside) or a 1 x X cell (with nums inside).

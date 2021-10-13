@@ -68,59 +68,94 @@ clearvars -except DataConfig SUB;
             if isempty(DataConfig.EventsToAdjust)
                 % then don't adjust any events.
             else % else shift the specified events by the specified amount.
-                
                 % check to see that first nominated event was moved as
                 % intended. (Assume the rest follow ok).
+                
+                % if there are edftype values that match our target set,
+                % push them into type field.
+                setOfEvents = cell2mat(DataConfig.RelevantCodes);
+                for thisEvent = 1:numel(EEG.event)
+                    if isempty(intersect(EEG.event(thisEvent).edftype, setOfEvents))
+                        % do nothing for irrelevant values.
+                    else % if an edftype matches, push that into type field.
+                        EEG.event(thisEvent).type = num2str(EEG.event(thisEvent).edftype);
+                        disp(['Found one here: ' num2str(EEG.event(thisEvent).urevent)]);
+                    end
+                end
+
                 preEvents = struct2table(EEG.event);
                 % sometimes this will change edftype into cell of strings,
                 % sometimes into cell of numerics. Need to force string.
                 if strcmp(class(preEvents.edftype{1}), 'double')
                     % it's made a cell of numbers, so force a change.
                     preEvents.edftype = cellfun(@num2str, preEvents.edftype, 'UniformOutput', false);
+                    preEvents.type = cellfun(@num2str, preEvents.type, 'UniformOutput', false);
                 end
-                indxtmp = strcmp(preEvents.type, DataConfig.EventsToAdjust{1});
-                preEvents = preEvents(indxtmp,:);
-                
+
                 % now adjust the specified events.
                 % should just use the built in EEGlab function.
                 EEG = pop_adjustevents(EEG,'addms', DataConfig.TimeShift{1}*1000, 'eventtypes', DataConfig.EventsToAdjust);
-                % now check the adjustment was sound. 
+                % grab the events after the switch. 
                 postEvents = struct2table(EEG.event);
                 % sometimes this will change edftype into cell of strings,
                 % sometimes into cell of numerics. Need to force string.
                 if strcmp(class(postEvents.edftype{1}), 'double')
                     % it's made a cell of numbers, so force a change.
                     postEvents.edftype = cellfun(@num2str, postEvents.edftype, 'UniformOutput', false);
-                end
-                indxtmp = strcmp(postEvents.type, DataConfig.EventsToAdjust{1});
-                postEvents = postEvents(indxtmp,:);
-                
-                % compare the pre and post events and output the change.
-                heightDiff = height(preEvents) - height(postEvents);
-                if heightDiff == 0
-                    % then they're the same length, so just compare
-                    % directly.
-                    latencyDiff = preEvents.latency - postEvents.latency;
-                    % initially measured in samples, so convert to sec.
-                    latencyDiff = latencyDiff./EEG.srate;
-                    plot(latencyDiff);
-                    title('AdjustmentPerEvent in seconds');
-                    saveas(gcf, [Subject_Path filesep 'X1b_' SUB{i} '_EventsMoved.png']);
-                else if heightDiff > 0
-                        % then one or more events were chopped off pre to
-                        % post.
-                        preEvents = preEvents(heightDiff+1:end, :);
-                    latencyDiff = preEvents.latency - postEvents.latency;
-                    % initially measured in samples, so convert to sec.
-                    latencyDiff = latencyDiff./EEG.srate;
-                    plot(latencyDiff);
-                    title('AdjustmentPerEvent in seconds');
-                    saveas(gcf, [Subject_Path filesep 'X1b_' SUB{i} '_EventsMoved.png']);
-                    else % something has gone wrong. Can't be adding events.
-                        disp('Error: Somehow events were added when shifting times.');
-                    end
+                    postEvents.type = cellfun(@num2str, postEvents.type, 'UniformOutput', false);
                 end
                 
+                for ThisBin = 1:numel(DataConfig.EventsToAdjust)
+                    % need to do a little extra here becuase sometimes the
+                    % relevant code goes into edftype field and sometimes
+                    % it goes into type field. No clear way to know
+                    % pre-import, so we'll just take both. 
+                    
+                    % find pre events for ThisBin
+                    indxtmp1 = strcmp(preEvents.type, DataConfig.EventsToAdjust{ThisBin});
+                    indxtmp2 = strcmp(preEvents.edftype,DataConfig.EventsToAdjust{ThisBin});
+                    indxtmp = or(indxtmp1, indxtmp2);
+                    preEventsPerBin = preEvents(indxtmp,:);
+   
+                    % find post events for ThisBin
+                    indxtmp1 = strcmp(postEvents.type, DataConfig.EventsToAdjust{ThisBin});
+                    indxtmp2 = strcmp(postEvents.edftype,DataConfig.EventsToAdjust{ThisBin});
+                    indxtmp = or(indxtmp1, indxtmp2);
+                    postEventsPerBin = postEvents(indxtmp,:);
+                    
+                    % compare the pre and post events and output the change.
+                    heightDiff = height(preEventsPerBin) - height(postEventsPerBin);
+                    if heightDiff == 0
+                        % then they're the same length, so just compare
+                        % directly.
+                        latencyDiff = preEventsPerBin.latency - postEventsPerBin.latency;
+                        % initially measured in samples, so convert to sec.
+                        latencyDiff = latencyDiff./EEG.srate;
+                        figure;
+                        plot(latencyDiff);
+                        title(['Adjustment of Bin ' num2str(ThisBin) ' in seconds']);
+                        saveas(gcf, [Subject_Path filesep 'Figures' filesep 'X1b_' SUB{i} ...
+                            '_Bin_' num2str(ThisBin) '_EventsMoved.png']);
+                        close(gcf);
+                    else if heightDiff > 0
+                            % then one or more events were chopped off pre to
+                            % post.
+                            preEventsPerBin = preEventsPerBin(heightDiff+1:end, :);
+                            latencyDiff = preEventsPerBin.latency - postEventsPerBin.latency;
+                            % initially measured in samples, so convert to sec.
+                            latencyDiff = latencyDiff./EEG.srate;
+                            figure;
+                            plot(latencyDiff);
+                            title(['Adjustment of Bin ' num2str(ThisBin) ' in seconds']);
+                            saveas(gcf, [Subject_Path filesep 'Figures' filesep  'X1b_' SUB{i} ...
+                                '_Bin_' num2str(ThisBin) '_EventsMoved.png']);
+                            close(gcf);
+                        else % something has gone wrong. Can't be adding events.
+                            disp('Error: Somehow events were added when shifting times.');
+                        end
+                    end % of check for different table heights. 
+                end % of bin by bin loop.
+
             end
             % format for creating a new .set file and saving it.
             [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event'], 'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp_refs_event.set'], 'gui', 'off');
