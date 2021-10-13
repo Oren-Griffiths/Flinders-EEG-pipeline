@@ -65,30 +65,63 @@ clearvars -except DataConfig SUB;
             %Load the continuous EEG data file outputted from Script #1a in .set EEGLAB file format
             [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs'], 'gui', 'off');
             
-            % So need to do something like this combo:
-            for ThisEventType_idx = 1:numel(DataConfig.EventsToAdjust)
-                ThisEventType = DataConfig.EventsToAdjust{ThisEventType_idx}; % a character indicating the relevant event label (often numeric label).
-                event_index = find(strcmp({EEG.event.type}, ThisEventType) == 1); % find instances of that label.
-                for InstanceOfEvent = 1:length(event_index) % loop through instances of that label.
-                    EEG.event(event_index(InstanceOfEvent)).latency = EEG.event(InstanceOfEvent).latency + ...
-                        EEG.srate *DataConfig.TimeShift{1} * 1000; % adjust latency of that event.
-                end % instance by instance loop
-                DataConfig.EventsAdjusted{ThisEventType_idx} = sum(event_index); % record how many events were changed, ordered by type.
-            end % event by event loop
-            
-            % remove any events that have a negative latency in case that interferes later.
-            % just loop  through all of them as finding negatives doesn't
-            % seem to work (in my hands).
-            % initialize an output field so that you can capture how many
-            % events were removed.
-            DataConfig.RemovedNegativeEvents = num2cell(0);
-            for ThisEvent = numel(EEG.event):-1:1 % reverse order loop.
-                if EEG.event(ThisEvent).latency < 0
-                    EEG.event(ThisEvent) = []; % delete that entry
-                    DataConfig.RemovedNegativeEvents{1} = DataConfig.RemovedNegativeEvents{1} + 1;
+            if isempty(DataConfig.EventsToAdjust)
+                % then don't adjust any events.
+            else % else shift the specified events by the specified amount.
+                
+                % check to see that first nominated event was moved as
+                % intended. (Assume the rest follow ok).
+                preEvents = struct2table(EEG.event);
+                % sometimes this will change edftype into cell of strings,
+                % sometimes into cell of numerics. Need to force string.
+                if strcmp(class(preEvents.edftype{1}), 'double')
+                    % it's made a cell of numbers, so force a change.
+                    preEvents.edftype = cellfun(@num2str, preEvents.edftype, 'UniformOutput', false);
                 end
+                indxtmp = strcmp(preEvents.type, DataConfig.EventsToAdjust{1});
+                preEvents = preEvents(indxtmp,:);
+                
+                % now adjust the specified events.
+                % should just use the built in EEGlab function.
+                EEG = pop_adjustevents(EEG,'addms', DataConfig.TimeShift{1}*1000, 'eventtypes', DataConfig.EventsToAdjust);
+                % now check the adjustment was sound. 
+                postEvents = struct2table(EEG.event);
+                % sometimes this will change edftype into cell of strings,
+                % sometimes into cell of numerics. Need to force string.
+                if strcmp(class(postEvents.edftype{1}), 'double')
+                    % it's made a cell of numbers, so force a change.
+                    postEvents.edftype = cellfun(@num2str, postEvents.edftype, 'UniformOutput', false);
+                end
+                indxtmp = strcmp(postEvents.type, DataConfig.EventsToAdjust{1});
+                postEvents = postEvents(indxtmp,:);
+                
+                % compare the pre and post events and output the change.
+                heightDiff = height(preEvents) - height(postEvents);
+                if heightDiff == 0
+                    % then they're the same length, so just compare
+                    % directly.
+                    latencyDiff = preEvents.latency - postEvents.latency;
+                    % initially measured in samples, so convert to sec.
+                    latencyDiff = latencyDiff./EEG.srate;
+                    plot(latencyDiff);
+                    title('AdjustmentPerEvent in seconds');
+                    saveas(gcf, [Subject_Path filesep 'X1b_' SUB{i} '_EventsMoved.png']);
+                else if heightDiff > 0
+                        % then one or more events were chopped off pre to
+                        % post.
+                        preEvents = preEvents(heightDiff+1:end, :);
+                    latencyDiff = preEvents.latency - postEvents.latency;
+                    % initially measured in samples, so convert to sec.
+                    latencyDiff = latencyDiff./EEG.srate;
+                    plot(latencyDiff);
+                    title('AdjustmentPerEvent in seconds');
+                    saveas(gcf, [Subject_Path filesep 'X1b_' SUB{i} '_EventsMoved.png']);
+                    else % something has gone wrong. Can't be adding events.
+                        disp('Error: Somehow events were added when shifting times.');
+                    end
+                end
+                
             end
-            
             % format for creating a new .set file and saving it.
             [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event'], 'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp_refs_event.set'], 'gui', 'off');
             

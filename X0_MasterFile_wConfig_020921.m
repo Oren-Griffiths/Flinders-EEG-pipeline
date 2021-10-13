@@ -5,7 +5,7 @@ global DataConfig
 ConfigFileName = 'WIMR_Config_testing';
 
 % what do we need to do?
-ModeToPerform = 'PreICA';
+ModeToPerform = 'PostICA';
 % 'PreICA' = preICA preparations, including decomposition and plot ICA
 % 'PostICA' = remove ICA components, epoch and baseline
 
@@ -60,36 +60,36 @@ switch DataConfig.mode
         %% do the preprocessing via PREP pipeline (or equivalent if PREP is
         % excluded). Also, can't do this parallel, as PREP calls up a
         % multithread loop, and those can't be nested.
-       % Y1_preprocess_wPREP;
-%         
-%         %% prepare for next step (can't update DataConfig in parallel).
-%         DataConfig.LastProcess = cellstr('X1_PreProcess');
-%         DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
-%         
-%         %% adjust events so they're on the correct timeline.
-%         tmpDataConfig = DataConfig;
-%         totalSUBS = length(tmpDataConfig.SUB);
-%         for loopIdx = 1:totalSUBS
-%             SUB =  tmpDataConfig.SUB(loopIdx);
-%             X1b_fixEvents_p(tmpDataConfig, SUB);
-%         end
-%         
-%         %% prepare for next step (can't update DataConfig in parallel).
-%         DataConfig.LastProcess = cellstr('X1b_fixEvents');
-%         if isempty(DataConfig.EventsToAdjust)
-%             DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
-%         else
-%             DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event.set');
-%         end
-%         
-%         %% do the ICA prep
-%         tmpDataConfig = DataConfig;
-%         totalSUBS = length(tmpDataConfig.SUB);
-%         for loopIdx = 1:totalSUBS
-%             SUB =  tmpDataConfig.SUB(loopIdx);
-%             X2_icaprep_p(tmpDataConfig, SUB);
-%         end
-%         
+       Y1_preprocess_wPREP;
+        
+        %% prepare for next step (can't update DataConfig in parallel).
+        DataConfig.LastProcess = cellstr('X1_PreProcess');
+        DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
+        
+        %% adjust events so they're on the correct timeline.
+        tmpDataConfig = DataConfig;
+        totalSUBS = length(tmpDataConfig.SUB);
+        for loopIdx = 1:totalSUBS
+            SUB =  tmpDataConfig.SUB(loopIdx);
+            X1b_fixEvents_p(tmpDataConfig, SUB);
+        end
+        
+        %% prepare for next step (can't update DataConfig in parallel).
+        DataConfig.LastProcess = cellstr('X1b_fixEvents');
+        if isempty(DataConfig.EventsToAdjust)
+            DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
+        else
+            DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event.set');
+        end
+        
+        %% do the ICA prep
+        tmpDataConfig = DataConfig;
+        totalSUBS = length(tmpDataConfig.SUB);
+        for loopIdx = 1:totalSUBS
+            SUB =  tmpDataConfig.SUB(loopIdx);
+            X2_icaprep_p(tmpDataConfig, SUB);
+        end
+        
         %% prepare for next step (can't update DataConfig in parallel).
         DataConfig.LastProcess = cellstr('X2_icaprep');
         DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event_icaPrep2.set');
