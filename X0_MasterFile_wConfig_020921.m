@@ -5,7 +5,7 @@ global DataConfig
 ConfigFileName = 'Sal_test';
 
 % what do we need to do?
-ModeToPerform = 'PreICA';
+ModeToPerform = 'PostICA';
 % 'PreICA' = preICA preparations, including decomposition and plot ICA
 % 'PostICA' = remove ICA components, epoch and baseline
 
@@ -115,43 +115,43 @@ switch DataConfig.mode
         end
         
     case 'PostICA' % apply ICA
-        %% prepare for next step (can't update DataConfig in parallel).
-        DataConfig.LastProcess = cellstr('X3b_PlotICAtopos');
-        DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event_icaWeighted.set');
-        
-        %% remove the noisy components
-        tmpDataConfig = DataConfig;
-        totalSUBS = length(tmpDataConfig.SUB);
-        parfor loopIdx = 1:totalSUBS
-            SUB =  tmpDataConfig.SUB(loopIdx);
-            X4_RemoveICA_p(tmpDataConfig, SUB);
-        end
-        
-        %% prepare for next step (can't update DataConfig in parallel).
-        DataConfig.LastProcess = cellstr('X4_RemoveICA');
-        DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip.set');
-        
-        %% bin the epochs defined earlier.
-        tmpDataConfig = DataConfig;
-        totalSUBS = length(tmpDataConfig.SUB);
-        parfor loopIdx = 1:totalSUBS
-            SUB =  tmpDataConfig.SUB(loopIdx);
-            X5_BinEpochs_p(tmpDataConfig, SUB);
-        end
-        
-        %% prepare for next step (can't update DataConfig in parallel).
-        DataConfig.LastProcess = cellstr('X5_BinEpochs');
-        DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch.set');
-        
-        %% artifact rejection (according to config file).
-        tmpDataConfig = DataConfig;
-        totalSUBS = length(tmpDataConfig.SUB);
-        parfor loopIdx = 1:totalSUBS
-            SUB =  tmpDataConfig.SUB(loopIdx);
-            imageType = 'png'; % or 'pdf' but this fails in parallel mode because it demands too much memory.
-            X6_ArtifactRejection_p(tmpDataConfig, SUB, imageType);
-        end
-        
+%         %% prepare for next step (can't update DataConfig in parallel).
+%         DataConfig.LastProcess = cellstr('X3b_PlotICAtopos');
+%         DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event_icaWeighted.set');
+%         
+%         %% remove the noisy components
+%         tmpDataConfig = DataConfig;
+%         totalSUBS = length(tmpDataConfig.SUB);
+%         parfor loopIdx = 1:totalSUBS
+%             SUB =  tmpDataConfig.SUB(loopIdx);
+%             X4_RemoveICA_p(tmpDataConfig, SUB);
+%         end
+%         
+%         %% prepare for next step (can't update DataConfig in parallel).
+%         DataConfig.LastProcess = cellstr('X4_RemoveICA');
+%         DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip.set');
+%         
+%         %% bin the epochs defined earlier.
+%         tmpDataConfig = DataConfig;
+%         totalSUBS = length(tmpDataConfig.SUB);
+%         parfor loopIdx = 1:totalSUBS
+%             SUB =  tmpDataConfig.SUB(loopIdx);
+%             X5_BinEpochs_p(tmpDataConfig, SUB);
+%         end
+%         
+%         %% prepare for next step (can't update DataConfig in parallel).
+%         DataConfig.LastProcess = cellstr('X5_BinEpochs');
+%         DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch.set');
+%         
+%         %% artifact rejection (according to config file).
+%         tmpDataConfig = DataConfig;
+%         totalSUBS = length(tmpDataConfig.SUB);
+%         parfor loopIdx = 1:totalSUBS
+%             SUB =  tmpDataConfig.SUB(loopIdx);
+%             imageType = 'png'; % or 'pdf' but this fails in parallel mode because it demands too much memory.
+%             X6_ArtifactRejection_p(tmpDataConfig, SUB, imageType);
+%         end
+%         
         %% prepare for next step (can't update DataConfig in parallel).
         DataConfig.LastProcess = cellstr('X6_ArtifactRejection');
         DataConfig.LastSuffix = cellstr('_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set');
@@ -159,7 +159,7 @@ switch DataConfig.mode
         %% and may as well extract the data here too.
         tmpDataConfig = DataConfig;
         totalSUBS = length(tmpDataConfig.SUB);
-        parfor loopIdx = 1:totalSUBS
+        for loopIdx = 1:totalSUBS
             SUB =  tmpDataConfig.SUB(loopIdx);
             X7_ExtractEpochedData_p(tmpDataConfig, SUB);
         end
