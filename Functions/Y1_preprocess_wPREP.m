@@ -134,7 +134,7 @@ SUB = DataConfig.SUB;
         % execution lines below can overwritte as required.
         
         % This was when we were doing it piecemeal. Not now.
-        PrepConfig = prepare_PREP_parameters(EEG);
+        [PrepConfig, DataConfig] = prepare_PREP_parameters(EEG, DataConfig);
         
         rawEEG = EEG; % save a copy of the dirty data for later comparison.
         
@@ -231,14 +231,16 @@ SUB = DataConfig.SUB;
         % was used for scalp channels (when processed with PREP).
         if DataConfig.PREP{1} == 1
             CommonReference = referenceOut.referenceSignal;
-            
-            EEG.data(DataConfig.KeyChans{3},:) = EEG.data(DataConfig.KeyChans{3},:) - CommonReference;
-            EEG.data(DataConfig.KeyChans{4},:) = EEG.data(DataConfig.KeyChans{4},:) - CommonReference;
-            
+
             % and for a fair comparison we should put the raw data on the same
-            % reference.
+            % reference as the main data (robust average or mastoids).
             for ThisChannel = 1:size(rawEEG.data,1)
-                rawEEG.data(ThisChannel,:) = rawEEG.data(ThisChannel,:) - CommonReference;
+                if strcmp(DataConfig.ReReference{1}, 'Mastoid')
+                    rawEEG.data(ThisChannel,:) = rawEEG.data(ThisChannel,:) - ...
+                        mean(rawEEG.data([DataConfig.KeyChans{3},DataConfig.KeyChans{4}],:),1);
+                else
+                    rawEEG.data(ThisChannel,:) = rawEEG.data(ThisChannel,:) - CommonReference;
+                end
             end
             
             % do a basic baselining of whole epoch solely for visualizing the
@@ -273,13 +275,15 @@ SUB = DataConfig.SUB;
             save(CleaningFilename , 'referenceOut');
         end
         
-        % finally rereference to Mastoids if that's specified.
-        if strcmp(DataConfig.ReReference{1}, 'Mastoid')
+        % finally rereference to Mastoids if that's specified, but only if
+        % PREP == 0, as otherwise PREP will have done the mastoid
+        % reference already (if that was declared). 
+        if strcmp(DataConfig.ReReference{1}, 'Mastoid') && DataConfig.PREP{1} == 0
             MastoidRef_filename = ['ChannelsFor' num2str(DataConfig.TotalChannels{1}) '_addMastoidsPostPREP.txt'];
             EEG = pop_eegchanoperator( EEG, [Current_File_Path filesep 'SupportingDocs' filesep MastoidRef_filename]);
-            % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_ref_bandpass_mastoids.set'],'filepath',Subject_Path);
-        else % leave the optimizied common (average) reference in play.
+        else % leave the reference in place that PREP pipeline applied. 
         end
+        
         
         % somehow doing this loses channel location information?
         % Add channel location information corresponding to the 3-D coordinates of the electrodes based on 10-10 International System site locations
