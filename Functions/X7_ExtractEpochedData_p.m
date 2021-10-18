@@ -6,7 +6,7 @@
 % image shows the data (that passes AR filter) plotted epoch-by-epoch.
 % Allows user to see if a few errant epochs are driving the mean. Currently
 % plots channel Cz or, if specified in ConfigFile, will plot the channel
-% chose in DataConfig.KeyChannel{1}. 
+% chose in DataConfig.KeyChannel{1}.
 
 function X7_ExtractEpochedData_p(DataConfig,SUB)
 
@@ -14,11 +14,11 @@ function X7_ExtractEpochedData_p(DataConfig,SUB)
 close all;
 clearvars -except DataConfig SUB;
 
-    % Location of the main study directory
-    DIR = fileparts(pwd);
-    
-    % location of preprocessing files.
-    Current_File_Path = pwd;
+% Location of the main study directory
+DIR = fileparts(pwd);
+
+% location of preprocessing files.
+Current_File_Path = pwd;
 
 
 %Open EEGLAB and ERPLAB Toolboxes
@@ -64,12 +64,12 @@ for i = 1:length(SUB)
         % Loop through the possible flag values and bin values.
         for ThisCell = 1:numel(FlagsThisTrial_cell)
             if double(any(FlagsThisTrial_cell{ThisCell})) > 0
-                % exclude this trial as there's an artefact. 
+                % exclude this trial as there's an artefact.
                 FlaggedEpochs(ThisTrial) = 0;
             end
-            if EpochBins(ThisTrial) > 0 
-            % Bin number already found, so skip this check. 
-            else % look for a bin number. 
+            if EpochBins(ThisTrial) > 0
+                % Bin number already found, so skip this check.
+            else % look for a bin number.
                 if BinThisCell_cell{ThisCell} > 0
                     EpochBins(ThisTrial) = double(BinThisCell_cell{ThisCell});
                 end
@@ -89,16 +89,20 @@ for i = 1:length(SUB)
             ThisBin = BinIDs(idx);
             disp(['Parsing bin number ' num2str(ThisBin)]);
             % find artefact-free bins that I want to scoop up.
-            epochsToTake = GoodEpochBins == ThisBin; 
-            % then scoop them up. 
+            epochsToTake = GoodEpochBins == ThisBin;
+            % then scoop them up.
             GoodTrials(ThisBin).data = double(TotalGoodTrials(:,:,epochsToTake));
             GoodTrials(ThisBin).ID = ThisBin;
+            GoodTrials(ThisBin).chanlocs = EEG.chanlocs;
+            GoodTrials(ThisBin).srate = EEG.srate;
         end
     else % no passing trials, so just note which events occured with 0 data
         for idx = 1:length(EpochBins)
-            ThisBin = EpochBins(idx); 
+            ThisBin = EpochBins(idx);
             GoodTrials(ThisBin).data = [];
             GoodTrials(ThisBin).ID = ThisBin;
+            GoodTrials(ThisBin).chanlocs = EEG.chanlocs;
+            GoodTrials(ThisBin).srate = EEG.srate;
         end
     end
     PropnFlagged = nnz(~FlaggedEpochs)/length(FlaggedEpochs);
@@ -147,16 +151,16 @@ for i = 1:length(SUB)
                 legend(labels);
                 title(num2str(ThisBin));
                 set(gca,'FontSize',18);
-
+                
             end % of skipped empty bins
         end % of bin by bin loop
-    set(gcf,'PaperPositionMode','manual','PaperUnits','Inches','PaperSize',[25 25], 'PaperPosition', [0 0 25 25] );
-    out_filename = [Subject_Path 'Figures\X7_',SUB{i} , '_BinGrandMeans.pdf'];
-    saveas(gcf,out_filename,'pdf');
-    close(gcf);
+        set(gcf,'PaperPositionMode','manual','PaperUnits','Inches','PaperSize',[25 25], 'PaperPosition', [0 0 25 25] );
+        out_filename = [Subject_Path 'Figures\X7_',SUB{i} , '_BinGrandMeans.pdf'];
+        saveas(gcf,out_filename,'pdf');
+        close(gcf);
     end
     
-    % draw a second set of figures for each trial at "KeyChannel" overlaid 
+    % draw a second set of figures for each trial at "KeyChannel" overlaid
     % on each other (to get a sense of noise in data set for that bins).
     NoOfBins = numel(GoodTrials);
     if NoOfBins > 0
@@ -181,7 +185,7 @@ for i = 1:length(SUB)
             if ~isempty(GoodTrials(ThisBin).data)
                 % loop through every epoch at assigned channel.
                 figure;
-                % find x axis 
+                % find x axis
                 times = EEG.times;
                 % grab the right bin.
                 dataToPlot = GoodTrials(ThisBin).data;
@@ -208,7 +212,7 @@ for i = 1:length(SUB)
                 out_filename = [Subject_Path 'Figures\X7_PID_', SUB{i} , '_Bin_' num2str(GoodTrials(ThisBin).ID) '_RawData.png'];
                 saveas(gcf,out_filename);
                 close(gcf);
-
+                
             end % of skipped empty bins
         end % of bin-by-bin loop.
     end % of skipped if no data at all.
