@@ -214,7 +214,7 @@ if min(inputSize) > 1
         f = gcf;
         f.Units = 'inches'; 
         f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size. 
-        fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) 'GrandAverage.png'];
+        fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandAverage.png'];
         disp(['Saving ERP image ' fig_filename]);
         exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
         close(gcf);
@@ -232,7 +232,7 @@ if min(inputSize) > 1
          f = gcf;
         f.Units = 'inches'; 
         f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size. 
-        fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) 'GrandTopoplot.png'];
+        fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandTopoplot.png'];
         disp(['Saving topoimage image ' fig_filename]);
         exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
         close(gcf);
