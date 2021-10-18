@@ -16,7 +16,7 @@ keyChans = {'Oz', 'O1', 'O2'};
 % what time period (ms) do you want visualized. This will obviously break
 % if you choose an area large than the epoch declared in DataConfig, so
 % choose sensibly.
-wholeEpoch = [ -200, 800];
+wholeEpoch = [-200, 800];
 
 % choose a time period you want to take the average across. Measured in ms.
 measureWindow = [150, 250];
@@ -91,8 +91,6 @@ participantAverages= NaN(length(DataConfig.SUB),NoOfChans,LengthOfEpoch, NoOfBin
 % generate an x-axis for plotting. Measurement is now in seconds.
 times = ([1:LengthOfEpoch].*1/srate) + (DataConfig.EpochMin{1}/1000);
 
-
-
 %% loop through SUBS and gather *per participant* averages by averaging across epochs (within bins).
 SUB = DataConfig.SUB;
 for k = 1:length(SUB)
@@ -125,7 +123,7 @@ if ~exist('GrandAverages', 'dir')
     mkdir('GrandAverages');
 end
 
-keyPeriod = (times > wholeEpoch(1) & times < wholeEpoch(2));
+keyPeriod = (times > wholeEpoch(1)/1000 & times < wholeEpoch(2)/1000);
 % get channel numbers
 % that is, convert channel indices from channel names.
 % have done this assuming Bin 1 is the same as for all others, but possible
@@ -159,94 +157,45 @@ save(rawOutput, 'temp');
 %%%% ok, up to here. Haven't written visualization code yet. (18.10.21).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% participantAverages.
+% structure: participants, chans, samples, by bins.
 
-% clean up the data.
-% the first 33 participants were patients. Remainder were controls (ish).
-temp_SZ = participantAverages(1:33,:,:,:);
-temp_ctrl = participantAverages(34:end,:,:,:);
-
-% clean up the data.
-% SZ group first.
-temp_SZ = squeeze(nanmean(temp_SZ(:,avFCz,:,:),1));
-% now we're channels by samples, by bins.
-temp_SZ = squeeze(nanmean(temp_SZ,1));
-% now we're samples by bins (6).
-% and we can smooth it to make it pretty.
-fpass = 30; % filters out 30Hz+
-fs = 256; % specifies sample rate of signal
-temp_SZ_smooth = lowpass(temp_SZ',fpass,fs)';
-% transposing needed because filters by columns
-% now controls
-temp_ctrl = squeeze(nanmean(temp_ctrl(:,avFCz,:,:),1));
-% now we're channels by samples, by bins.
-temp_ctrl = squeeze(nanmean(temp_ctrl,1));
-% now we're samples by bins (6).
-% and we can smooth it to make it pretty.
-fpass = 30; % filters out 30Hz+
-fs = 256; % specifies sample rate of signal
-temp_ctrl_smooth = lowpass(temp_ctrl',fpass,fs)';
-
-keyPeriod = (times > -0.2 & times < 0.8);
-timeToPlot = times(keyPeriod);
-ColoursOfLines = {'r', 'r', 'b', 'b', 'g', 'g'};
-StyleOfLines = {'-', '--','-', '--','-', '--'};
-
-% plot the SZ data.
-dataToPlot = temp_SZ_smooth(keyPeriod, :); % temp or temp_smooth
-
-figure;
-hold on
-for ThisBin = 1:NoOfBins
-    line(timeToPlot,dataToPlot(:,ThisBin),'Color', ...
-        ColoursOfLines{ThisBin}, 'LineStyle', StyleOfLines{ThisBin});
+% we want global mean and SEM over the keyPeriod time window.
+% and we want separate figures for each bin.
+inputSize = size(participantAverages);
+temp = [];
+if min(inputSize) > 1
+    for ThisBin = 1:NoOfBins
+        timesToPlot = times(keyPeriod);
+        % average across nominated chans (if more than one).
+        temp = squeeze(nanmean(participantAverages(:,keyChanIdx,keyPeriod,ThisBin),2));
+        % now should be: PIDs by samples
+        meansToPlot = nanmean(temp,1);
+        SEMs = std(temp,0,1, 'omitnan');
+        minToPlot = meansToPlot - SEMs;
+        maxToPlot = meansToPlot + SEMs;
+        figure;
+        hold on
+        line(timesToPlot, meansToPlot, 'LineStyle', '-', 'Color', 'r', 'LineWidth', 2);
+        line(timesToPlot, minToPlot, 'LineStyle', ':', 'Color', 'r', 'LineWidth', 1);
+        line(timesToPlot, maxToPlot, 'LineStyle', ':', 'Color', 'r', 'LineWidth', 1);
+        xline(0, ':k');
+        for ThisPID = 1:size(temp,1)
+            line(timesToPlot, temp(ThisPID,:), 'LineStyle', '-', 'Color', 'k', 'LineWidth', 0.5);
+        end
+        hold off
+        title(['Global Mean And SEMs Of Bin: ' num2str(ThisBin) ' at channel(s): ' string(strjoin(keyChans))]);
+        ylabel('Voltage(microvolts)');
+        xlabel('Time(s)');
+        % change some values and save.
+        f = gcf;
+        f.Units = 'inches'; 
+        f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size. 
+        fig_filename = ['GrandAverages' filesep 'Bin_' num2str(ThisBin) 'GrandAverage.png'];
+        exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
+        close(gcf);
+    end
+else
+    disp('Either participants, chans, samples, or bins is size 1, so cannot draw figures.');
 end
-hold off
-ylim([-10, 10]);
-title ('SZ_participants');
-% save as Matlab's fig.
-saveas(gcf, ['GrandAverages' filesep 'SZ_GrandAverages.fig']);
-% save as png.
-saveas(gcf, ['GrandAverages' filesep 'SZ_GrandAverages.png']);
 
-% plot the CTRL data.
-dataToPlot = temp_ctrl_smooth(keyPeriod, :); % temp or temp_smooth
-
-figure;
-hold on
-for ThisBin = 1:NoOfBins
-    line(timeToPlot,dataToPlot(:,ThisBin),'Color', ...
-        ColoursOfLines{ThisBin}, 'LineStyle', StyleOfLines{ThisBin});
-end
-hold off
-ylim([-10, 10]);
-title ('CTRL_participants');
-% save as Matlab's fig.
-saveas(gcf, ['GrandAverages' filesep 'CTRL_GrandAverages.fig']);
-% save as png.
-saveas(gcf, ['GrandAverages' filesep 'CTRL_GrandAverages.png']);
-
-% and a final figure that looks at talk-listen (ignores pitch and cued),
-% but directly compares SZ with controls.
-
-
-figure
-hold on
-% SZ talk
-line(timeToPlot, squeeze(mean(temp_SZ_smooth(keyPeriod, [1,2]),2)), ...
-    'Color', 'r', 'LineStyle', '-', 'LineWidth', 2);
-% SZ listen
-line(timeToPlot, squeeze(mean(temp_SZ_smooth(keyPeriod, [3,4]),2)),...
-    'Color', 'b', 'LineStyle', '-',  'LineWidth', 2);
-% ctrl talk
-line(timeToPlot, squeeze(mean(temp_ctrl_smooth(keyPeriod, [1,2]),2)),...
-    'Color', 'r', 'LineStyle', ':',  'LineWidth', 2);
-% ctrl listen
-line(timeToPlot, squeeze(mean(temp_ctrl_smooth(keyPeriod, [3,4]),2)), ...
-    'Color', 'b', 'LineStyle', ':',  'LineWidth', 2);
-hold off
-ylim([-10, 10]);
-title ('Red is talk, blue is listen, dotted are CTRLs');
-% save as Matlab's fig.
-saveas(gcf, ['GrandAverages' filesep 'BothSZandCTRL_GrandAverages.fig']);
-% save as png.
-saveas(gcf, ['GrandAverages' filesep 'BothSZandCTRL_GrandAverages.png']);
