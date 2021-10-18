@@ -1,10 +1,6 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% just a placeholder now. Needs to be corrected once ERP topographies are
-% done.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % global goal of this file is to use the same config file, add a few
-% details to specify the FFT output you want, and then generates ERPs,
-% figures, etc.
+% details to specify what kind of FFT data you want, and then generates
+% mean FFTs (across epochs per bin, and across individuals).
 
 %% Get the extra details from the user [i.e. change these values.]
 
@@ -23,7 +19,7 @@ keyChans = {'Oz', 'O1', 'O2'};
 wholeEpoch = [-200, 800];
 
 % choose a time period you want to take the average across. Measured in ms.
-measureWindow = [150, 250];
+measureWindow = [50, 150];
 
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample
@@ -75,6 +71,8 @@ for ThisBin = 1:numel(GoodTrials)
     end
 end
 
+chanlocs = GoodTrials(1).chanlocs; % we need this structure too. 
+
 % and let's get the values from another method too. Makes sure everything
 % aligns.
 LengthOfEpoch_2 = (DataConfig.EpochMax{1} - DataConfig.EpochMin{1})/1000 * ...
@@ -88,7 +86,8 @@ else % possible error.
     display(['Outputted data are this long:' num2str(LengthOfEpoch)]);
 end
 
-% initialize a variable full of not-numbers (0s,1s would bias means).
+% initialize a variable full of not-numbers (0s,1s would bias means if an 
+% error was made somewhere down the line. Here errors make it break).
 % structure: participants, chans, samples, by bins.
 participantAverages= NaN(length(DataConfig.SUB),NoOfChans,LengthOfEpoch, NoOfBins);
 
@@ -123,8 +122,8 @@ for k = 1:length(SUB)
 end % of subject by subject loop
 
 %% and now start to calculate the output the data needed.
-if ~exist('GrandAverages', 'dir')
-    mkdir('GrandAverages');
+if ~exist('ERP_GrandAverages', 'dir')
+    mkdir('ERP_GrandAverages');
 end
 
 keyPeriod = (times > wholeEpoch(1)/1000 & times < wholeEpoch(2)/1000);
@@ -151,16 +150,34 @@ end
 
 % now structure is: participants, samples, by bins.
 % limit to the relevant epoch.
-temp = temp(:,keyPeriod,:);
+tempForOutput = temp(:,keyPeriod,:);
 
 % save that raw data
-rawOutput = [pwd filesep 'GrandAverages' filesep 'ChosenChans_PIDbySamplesByBins.mat'];
-save(rawOutput, 'temp');
+rawOutput = [pwd filesep 'ERP_GrandAverages' filesep 'ChosenChans_PIDbySamplesByBins.mat'];
+save(rawOutput, 'tempForOutput');
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%% ok, up to here. Haven't written visualization code yet. (18.10.21).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% when do we want to quantify as the "key" period?
+measurePeriod = (times > measureWindow (1)/1000 & times < measureWindow(2)/1000);
 
+% and now do the same, but average across measurement window and outputting
+% a CSV with PID and mean value in window.
+PIDxSampxBin = temp;
+for ThisBin = 1:NoOfBins
+    for k = 1:length(SUB)
+        meanByBin{k+1,1} = SUB{k};
+        meanByBin{k+1,ThisBin+1} = nanmean(PIDxSampxBin(k, measurePeriod, ThisBin),2);
+    end % of PID by PID loop.
+    % add a header per bin
+    meanByBin{1,ThisBin+1} = ['Bin' num2str(ThisBin)];
+end % of bin by bin loop.
+% and just one more header
+meanByBin{1,1} = 'PID';
+
+% and output that value
+meansOutput = [pwd filesep 'ERP_GrandAverages' filesep 'ValuesInMeasureWindow.xlsx'];
+writecell(meanByBin, meansOutput);
+
+%% and now start drawing. 
 % participantAverages.
 % structure: participants, chans, samples, by bins.
 
@@ -183,7 +200,9 @@ if min(inputSize) > 1
         line(timesToPlot, meansToPlot, 'LineStyle', '-', 'Color', 'r', 'LineWidth', 2);
         line(timesToPlot, minToPlot, 'LineStyle', ':', 'Color', 'r', 'LineWidth', 1);
         line(timesToPlot, maxToPlot, 'LineStyle', ':', 'Color', 'r', 'LineWidth', 1);
-        xline(0, ':k');
+        xline(0, ':k'); % show time zero
+        xline(measureWindow(1)/1000, ':k'); % show start of eval period.
+        xline(measureWindow(2)/1000, ':k'); % show end of eval period.
         for ThisPID = 1:size(temp,1)
             line(timesToPlot, temp(ThisPID,:), 'LineStyle', '-', 'Color', 'k', 'LineWidth', 0.5);
         end
@@ -195,11 +214,34 @@ if min(inputSize) > 1
         f = gcf;
         f.Units = 'inches'; 
         f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size. 
-        fig_filename = ['GrandAverages' filesep 'Bin_' num2str(ThisBin) 'GrandAverage.png'];
+        fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandAverage.png'];
+        disp(['Saving ERP image ' fig_filename]);
         exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
         close(gcf);
+        
+        % and now do a topoplot per bin. 
+        measurePeriod;
+        temp = [];
+        temp = squeeze(nanmean(participantAverages(:,1:DataConfig.TotalChannels{1},measureWindow,ThisBin),3));
+        dataToPlot = squeeze(nanmean(temp,1));
+        % now should be: PIDs by chans
+        figure;
+        topoplot(dataToPlot, chanlocs);  
+        colorbar;
+        title(['Topoplot of Bin: ' num2str(ThisBin) 'during measurement window']);
+         f = gcf;
+        f.Units = 'inches'; 
+        f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size. 
+        fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandTopoplot.png'];
+        disp(['Saving topoimage image ' fig_filename]);
+        exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
+        close(gcf);
+        
     end
 else
     disp('Either participants, chans, samples, or bins is size 1, so cannot draw figures.');
 end
+
+%% ok, last stage is to do the relevant topoplots 
+
 

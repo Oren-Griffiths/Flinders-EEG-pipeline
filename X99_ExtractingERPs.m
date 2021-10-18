@@ -3,7 +3,6 @@
 % figures, etc.
 
 %% Get the extra details from the user [i.e. change these values.]
-
 % what's the relevant config file called?
 ConfigFileName = 'WIMR_Config_testing';
 
