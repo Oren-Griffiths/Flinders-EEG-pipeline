@@ -18,8 +18,9 @@ keyChans = {'Oz', 'O1', 'O2'};
 % choose sensibly.
 wholeEpoch = [-200, 800];
 
-% choose a time period you want to take the average across. Measured in ms.
-measureWindow = [50, 150];
+% choose a frequency target, and a visualization window. 
+targetHz = 15; 
+targetHzWindow = [50, 150];
 
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample

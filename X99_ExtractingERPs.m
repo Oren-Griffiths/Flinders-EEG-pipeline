@@ -10,7 +10,7 @@ ConfigFileName = 'WIMR_Config_testing';
 % channel, it will average across them (i.e. treat it as a single montage).
 % If you want to compare different channels/AOIs, run this script more
 % than once with different channels chosen each time.
-keyChans = {'Oz', 'O1', 'O2'};
+keyChans = {'FCz'};
 
 % what time period (ms) do you want visualized. This will obviously break
 % if you choose an area large than the epoch declared in DataConfig, so
@@ -70,7 +70,7 @@ for ThisBin = 1:numel(GoodTrials)
     end
 end
 
-chanlocs = GoodTrials(1).chanlocs; % we need this structure too. 
+chanlocs = GoodTrials(1).chanlocs; % we need this structure too.
 
 % and let's get the values from another method too. Makes sure everything
 % aligns.
@@ -85,7 +85,7 @@ else % possible error.
     display(['Outputted data are this long:' num2str(LengthOfEpoch)]);
 end
 
-% initialize a variable full of not-numbers (0s,1s would bias means if an 
+% initialize a variable full of not-numbers (0s,1s would bias means if an
 % error was made somewhere down the line. Here errors make it break).
 % structure: participants, chans, samples, by bins.
 participantAverages= NaN(length(DataConfig.SUB),NoOfChans,LengthOfEpoch, NoOfBins);
@@ -144,7 +144,7 @@ if length(DataConfig.SUB) == 1
     %  turn this into 3D structure for consistency.
     temp2 = ones(1,size(temp,1), size(temp, 2));
     temp2(1,:,:) = temp(:,:);
-    temp = temp2; 
+    temp = temp2;
 end
 
 % now structure is: participants, samples, by bins.
@@ -176,7 +176,7 @@ meanByBin{1,1} = 'PID';
 meansOutput = [pwd filesep 'ERP_GrandAverages' filesep 'ValuesInMeasureWindow.xlsx'];
 writecell(meanByBin, meansOutput);
 
-%% and now start drawing. 
+%% and now start drawing.
 % participantAverages.
 % structure: participants, chans, samples, by bins.
 
@@ -196,41 +196,42 @@ if min(inputSize) > 1
         maxToPlot = meansToPlot + SEMs;
         figure;
         hold on
-        line(timesToPlot, meansToPlot, 'LineStyle', '-', 'Color', 'r', 'LineWidth', 2);
-        line(timesToPlot, minToPlot, 'LineStyle', ':', 'Color', 'r', 'LineWidth', 1);
-        line(timesToPlot, maxToPlot, 'LineStyle', ':', 'Color', 'r', 'LineWidth', 1);
         xline(0, ':k'); % show time zero
         xline(measureWindow(1)/1000, ':k'); % show start of eval period.
         xline(measureWindow(2)/1000, ':k'); % show end of eval period.
         for ThisPID = 1:size(temp,1)
             line(timesToPlot, temp(ThisPID,:), 'LineStyle', '-', 'Color', 'k', 'LineWidth', 0.5);
         end
+        
+        line(timesToPlot, meansToPlot, 'LineStyle', '-', 'Color', 'r', 'LineWidth', 3);
+        line(timesToPlot, minToPlot, 'LineStyle', ':', 'Color', 'r', 'LineWidth', 2);
+        line(timesToPlot, maxToPlot, 'LineStyle', ':', 'Color', 'r', 'LineWidth', 2);
         hold off
         title(['Global Mean And SEMs Of Bin: ' num2str(ThisBin) ' at channel(s): ' string(strjoin(keyChans))]);
         ylabel('Voltage(microvolts)');
         xlabel('Time(s)');
         % change some values and save.
         f = gcf;
-        f.Units = 'inches'; 
-        f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size. 
+        f.Units = 'inches';
+        f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
         fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandAverage.png'];
         disp(['Saving ERP image ' fig_filename]);
         exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
         close(gcf);
         
-        % and now do a topoplot per bin. 
+        % and now do a topoplot per bin.
         measurePeriod;
         temp = [];
         temp = squeeze(nanmean(participantAverages(:,1:DataConfig.TotalChannels{1},measureWindow,ThisBin),3));
         dataToPlot = squeeze(nanmean(temp,1));
         % now should be: PIDs by chans
         figure;
-        topoplot(dataToPlot, chanlocs);  
+        topoplot(dataToPlot, chanlocs);
         colorbar;
         title(['Topoplot of Bin: ' num2str(ThisBin) 'during measurement window']);
-         f = gcf;
-        f.Units = 'inches'; 
-        f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size. 
+        f = gcf;
+        f.Units = 'inches';
+        f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
         fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandTopoplot.png'];
         disp(['Saving topoimage image ' fig_filename]);
         exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
@@ -241,6 +242,6 @@ else
     disp('Either participants, chans, samples, or bins is size 1, so cannot draw figures.');
 end
 
-%% ok, last stage is to do the relevant topoplots 
+%% ok, last stage is to do the relevant topoplots
 
 
