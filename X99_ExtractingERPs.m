@@ -235,10 +235,10 @@ if min(inputSize) > 1
         % and now do a topoplot per bin.
         measurePeriod;
         temp = [];
-        temp = squeeze(nanmean(participantAverages(:,1:DataConfig.TotalChannels{1},measureWindow,ThisBin),3));
+        temp = squeeze(nanmean(participantAverages(:,1:DataConfig.TotalChannels{1},measurePeriod,ThisBin),3));
         dataToPlot = squeeze(nanmean(temp,1));
         % now should be: PIDs by chans
-        
+
         if sum(isnan(dataToPlot)) == length(dataToPlot)
             % don't actually draw the image if there aren't any data.
         else 
