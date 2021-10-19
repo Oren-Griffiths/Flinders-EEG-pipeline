@@ -21,6 +21,8 @@ wholeEpoch = [-200, 800];
 % choose a frequency target, and a visualization window. 
 targetHz = 15; 
 targetHzWindow = [50, 150];
+% how do you want to do baselining? 
+baselining = 'subtract'; % or 'none' or 'z' 
 
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample
@@ -63,7 +65,7 @@ for ThisBin = 1:numel(GoodTrials)
         arraySizes = size(GoodTrials(ThisBin).data);
         NoOfChans = arraySizes(1); % value we need.
         LengthOfEpoch = arraySizes(2); % value we need.
-        if size(arraySizes) > 2
+        if length(arraySizes) > 2
             NoOfEpochs = arraySizes(3); % value we need.
         else
             NoOfEpochs = 1;
@@ -87,13 +89,15 @@ else % possible error.
     display(['Outputted data are this long:' num2str(LengthOfEpoch)]);
 end
 
+% generate an x-axis for plotting. Measurement is now in seconds.
+times = ([1:LengthOfEpoch].*1/srate) + (DataConfig.EpochMin{1}/1000);
+FFT_length = floor(LengthOfEpoch/2)+1;
+HzBins = 0: (srate/2)/(FFT_length-1)  : srate/2;
+
 % initialize a variable full of not-numbers (0s,1s would bias means if an 
 % error was made somewhere down the line. Here errors make it break).
 % structure: participants, chans, samples, by bins.
-participantAverages= NaN(length(DataConfig.SUB),NoOfChans,LengthOfEpoch, NoOfBins);
-
-% generate an x-axis for plotting. Measurement is now in seconds.
-times = ([1:LengthOfEpoch].*1/srate) + (DataConfig.EpochMin{1}/1000);
+participantAverages= NaN(length(DataConfig.SUB),NoOfChans,FFT_length, NoOfBins);
 
 %% loop through SUBS and gather *per participant* averages by averaging across epochs (within bins).
 SUB = DataConfig.SUB;
@@ -113,10 +117,45 @@ for k = 1:length(SUB)
             if isempty(GoodTrials(ThisBin).data)
                 % do nothing, this entry is already all NaNs
             else
+                % do FFT trial-by-trial, then average those FFTs. Do this
+                % per channel. 
+                for ThisChan = 1:DataConfig.TotalChannels{1}
+                    % epochs by "samples" (output of FFT, so spectral
+                    % powers).
+                    disp(['FFT for Chan: ' num2str(ThisChan) ' PID: ' SUB{k}]);
+                    % intialize output variable.
+                    FFT_placeholder = NaN(NoOfEpochs,FFT_length);
+                    for ThisEpoch = 1:NoOfEpochs
+                        switch baselining
+                            case 'subtract'
+                                FFT_placeholder(ThisEpoch,:) = ...
+                                    applyFFTbaseline(SimpleFFT(GoodTrials(ThisBin).data(ThisChan,:,ThisEpoch)))';
+                            case 'z'
+                                FFT_placeholder(ThisEpoch,:) = ...
+                                applyFFTbaselineZ(SimpleFFT(GoodTrials(ThisBin).data(ThisChan,:,ThisEpoch)))';
+                            case 'none'
+                                FFT_placeholder(ThisEpoch,:) = ...
+                                SimpleFFT(GoodTrials(ThisBin).data(ThisChan,:,ThisEpoch));
+                        end
+                    end % of epoch by epoch loop.
+                   
+                  participantAverages(k,ThisChan,:,ThisBin) = nanmean(FFT_placeholder,1);
+                    
+                end % channel by channel loop.
+                
+                
+                % option here to subtract or z-score.
+                EEG.epochedFFT{thisEpoch}(ThisChan, :) =  ...
+                    applyFFTbaselineZ(SimpleFFT(EEG.epochedData{thisEpoch}(ThisChan,:)));
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % load the mean per epoch into a global variable.
                 temp = squeeze(mean(GoodTrials(ThisBin).data,3));
                 participantAverages(k,:,:,ThisBin) =  temp;
                 display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                
             end
         end % of skipping empty data sets
     end % of bin by bin loop.

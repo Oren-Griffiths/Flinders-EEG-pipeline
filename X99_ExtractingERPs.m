@@ -10,7 +10,7 @@ ConfigFileName = 'WIMR_Config_testing';
 % channel, it will average across them (i.e. treat it as a single montage).
 % If you want to compare different channels/AOIs, run this script more
 % than once with different channels chosen each time.
-keyChans = {'FCz'};
+keyChans = {'FCz', 'Fz', 'Cz', 'FC1', 'FC2'};
 
 % what time period (ms) do you want visualized. This will obviously break
 % if you choose an area large than the epoch declared in DataConfig, so
@@ -61,7 +61,7 @@ for ThisBin = 1:numel(GoodTrials)
         arraySizes = size(GoodTrials(ThisBin).data);
         NoOfChans = arraySizes(1); % value we need.
         LengthOfEpoch = arraySizes(2); % value we need.
-        if size(arraySizes) > 2
+        if length(arraySizes) > 2
             NoOfEpochs = arraySizes(3); % value we need.
         else
             NoOfEpochs = 1;
@@ -112,8 +112,10 @@ for k = 1:length(SUB)
                 % do nothing, this entry is already all NaNs
             else
                 % load the mean per epoch into a global variable.
-                temp = squeeze(mean(GoodTrials(ThisBin).data,3));
-                participantAverages(k,:,:,ThisBin) =  temp;
+                temp = squeeze(nanmean(GoodTrials(ThisBin).data,3));
+                for ThisChan = 1:NoOfChans
+                    participantAverages(k,ThisChan,:,ThisBin) =  temp(ThisChan,:);
+                end
                 display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);
             end
         end % of skipping empty data sets
