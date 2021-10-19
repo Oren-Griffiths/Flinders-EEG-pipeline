@@ -20,6 +20,10 @@ wholeEpoch = [-200, 800];
 % choose a time period you want to take the average across. Measured in ms.
 measureWindow = [50, 150];
 
+% if a person has less than X clean epochs are AR-rejection, then remove
+% them from the averaging process. Set X. Put empty '[]' to ignore min.
+minEpochs = 30;
+
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample
 % data per person, averaged values per participant during the measurement
@@ -111,12 +115,19 @@ for k = 1:length(SUB)
             if isempty(GoodTrials(ThisBin).data)
                 % do nothing, this entry is already all NaNs
             else
-                % load the mean per epoch into a global variable.
-                temp = squeeze(nanmean(GoodTrials(ThisBin).data,3));
-                for ThisChan = 1:NoOfChans
-                    participantAverages(k,ThisChan,:,ThisBin) =  temp(ThisChan,:);
+                % check to see if there are enough epochs for a stable
+                % estimate.
+                if isempty(minEpochs) || size(GoodTrials(ThisBin).data,3) > minEpochs
+                    % load the mean per epoch into a global variable.
+                    temp = squeeze(nanmean(GoodTrials(ThisBin).data,3));
+                    for ThisChan = 1:NoOfChans
+                        participantAverages(k,ThisChan,:,ThisBin) =  temp(ThisChan,:);
+                    end
+                    display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);  
+                else
+                    display(['Skipping SUB ' SUB{k} ' Bin ' num2str(ThisBin) '. Too few epochs.']);  
                 end
-                display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);
+                
             end
         end % of skipping empty data sets
     end % of bin by bin loop.
@@ -227,18 +238,22 @@ if min(inputSize) > 1
         temp = squeeze(nanmean(participantAverages(:,1:DataConfig.TotalChannels{1},measureWindow,ThisBin),3));
         dataToPlot = squeeze(nanmean(temp,1));
         % now should be: PIDs by chans
-        figure;
-        topoplot(dataToPlot, chanlocs);
-        colorbar;
-        title(['Topoplot of Bin: ' num2str(ThisBin) 'during measurement window']);
-        f = gcf;
-        f.Units = 'inches';
-        f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-        fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandTopoplot.png'];
-        disp(['Saving topoimage image ' fig_filename]);
-        exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
-        close(gcf);
         
+        if sum(isnan(dataToPlot)) == length(dataToPlot)
+            % don't actually draw the image if there aren't any data.
+        else 
+            figure;
+            topoplot(dataToPlot, chanlocs);
+            colorbar;
+            title(['Topoplot of Bin: ' num2str(ThisBin) 'during measurement window']);
+            f = gcf;
+            f.Units = 'inches';
+            f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
+            fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandTopoplot.png'];
+            disp(['Saving topoimage image ' fig_filename]);
+            exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
+            close(gcf);
+        end
     end
 else
     disp('Either participants, chans, samples, or bins is size 1, so cannot draw figures.');
