@@ -243,7 +243,7 @@ if min(inputSize) > 1
             % don't actually draw the image if there aren't any data.
         else 
             figure;
-            topoplot(dataToPlot, chanlocs);
+            topoplot(dataToPlot, chanlocs, 'electrodes' ,'ptslabels');
             colorbar;
             title(['Topoplot of Bin: ' num2str(ThisBin) 'during measurement window']);
             f = gcf;
