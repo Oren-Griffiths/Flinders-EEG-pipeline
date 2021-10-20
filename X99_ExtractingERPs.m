@@ -27,7 +27,7 @@ minEpochs = 30;
 % include the option of generating a "mask" file which has an 1/0 entry for
 % every subject: 1s being included in the grand average analysis and 0s
 % being excluded. If you just want to include everyone, write 'none'.
-maskFile = 'PID_mask.xlsx'; 
+maskFile = 'none'; 
 
 % if you want to e.g. compare bin 1 with bin 3 in a 6 bin experiment, then 
 % put in a vector of:  
@@ -36,7 +36,7 @@ maskFile = 'PID_mask.xlsx';
 % supported, e.g. [ 1 -0.5 -0.5 0 0 0]. If you just want all bins considered
 % separately, leave it blank. Must be normalized (i.e. sum to 0), ...
 % and ideally abs(sum) = 2 as well. 
-binContrast = [1 -0.5 -0.5 0 0 0];
+binContrast = [];
 
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample
