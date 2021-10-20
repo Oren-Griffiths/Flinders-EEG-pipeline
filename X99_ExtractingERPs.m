@@ -86,9 +86,16 @@ for ThisBin = 1:numel(GoodTrials)
         end
         ThisBin = numel(GoodTrials); % enter the exit value.
     end
+    
+    % have you already grabbed the chanloc info?
+    if exist('chanlocs')
+        % already got the chanloc info. Ignore.
+    else
+        if ~isempty(GoodTrials(ThisBin).chanlocs)
+            chanlocs = GoodTrials(ThisBin).chanlocs;  % we need this structure too.
+        end
+    end
 end
-
-chanlocs = GoodTrials(1).chanlocs; % we need this structure too.
 
 % and let's get the values from another method too. Makes sure everything
 % aligns.
@@ -241,15 +248,9 @@ keyPeriod = (times > wholeEpoch(1)/1000 & times < wholeEpoch(2)/1000);
 % have done this assuming that all bins have the same channel location
 % structure, but robust to missing values for some bins. 
 
-for ThisBin = 1:NoOfBins
-    if isempty(GoodTrials(ThisBin).chanlocs)
-        % nope, no channel info here.
-    else
-        for ThisChan = 1:length(keyChans)
-            keyChanIdx(ThisChan) = find(strcmp({GoodTrials(ThisBin).chanlocs.labels}, keyChans{ThisChan})==1);
-            ThisBin = NoOfBins; % skip out of the loop.
-        end
-    end
+for ThisChan = 1:length(keyChans)
+    keyChanIdx(ThisChan) = find(strcmp({chanlocs.labels}, keyChans{ThisChan})==1);
+    ThisBin = NoOfBins; % skip out of the loop.
 end
 
 % participantAverages.
