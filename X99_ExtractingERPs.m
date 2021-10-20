@@ -43,7 +43,9 @@ binContrast = [];
 % latency (in ERP waveforms) and min/max channel values in the topoplots? 
 % if you want this info, set variable to 1. Else leave as 0. 
 showPeakInfo = 1; 
-
+% do you want to add a fine overlay of each individual to the grand average
+% waveforms (e.g. to check for presence of outliers)? If so, set to 1.
+showIndividualTraces = 1; 
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample
 % data per person, averaged values per participant during the measurement
@@ -358,8 +360,10 @@ for ThisBin = 1:NoOfBins
     xline(0, '-k'); % show time zero
     xline(measureWindow(1)/1000, ':k'); % show start of eval period.
     xline(measureWindow(2)/1000, ':k'); % show end of eval period.
-    for ThisPID = 1:size(tempForOutput{ThisBin},1)
-        line(timesToPlot, tempForOutput{ThisBin}(ThisPID,:), 'LineStyle', ':', 'Color', 'k', 'LineWidth', 0.5);
+    if showIndividualTraces == 1
+        for ThisPID = 1:size(tempForOutput{ThisBin},1)
+            line(timesToPlot, tempForOutput{ThisBin}(ThisPID,:), 'LineStyle', ':', 'Color', 'k', 'LineWidth', 0.5);
+        end
     end
     line(timesToPlot, meansToPlot, 'LineStyle', '-', 'Color', 'r', 'LineWidth', 2);
     line(timesToPlot, minToPlot, 'LineStyle', '--', 'Color', 'r', 'LineWidth', 2);
