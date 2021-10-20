@@ -332,6 +332,21 @@ for ThisBin = 1:NoOfBins
     % now should be: PIDs by samples
     minToPlot = meansToPlot - SEMs;
     maxToPlot = meansToPlot + SEMs;
+    
+    % find peak within measurement window? 
+    % PIDs by chans by samples.
+    findingPeaks = squeeze(nanmean(participantAverages{ThisBin} (:,keyChanIdx,measurePeriod), [2, 1]));
+    [posPeak, posPeakIdx] = max(findingPeaks);
+    [negPeak, negPeakIdx] = min(findingPeaks);
+    timesToMeasure = times(measurePeriod);
+    posPeakTime = timesToMeasure(posPeakIdx);
+    negPeakTime = timesToMeasure(negPeakIdx);
+    posPeakText = ['Max Val = ' num2str(round(posPeak,2)) ' at ' ...
+        num2str(round(posPeakTime,2)) 's' ];
+    negPeakText = ['Min Val = ' num2str(round(negPeak,2)) ' at ' ...
+        num2str(round(negPeakTime,2)) 's' ];
+    
+    % start drawing 
     figure;
     hold on
     xline(0, '-k'); % show time zero
@@ -349,6 +364,8 @@ for ThisBin = 1:NoOfBins
     else
         title(['Global Mean And SEMs Of Difference Wave at channel(s): ' string(strjoin(keyChans))]);
     end
+    text(posPeakTime, posPeak, ['\leftarrow ' posPeakText], 'Color','black','FontSize',10);
+    text(negPeakTime, negPeak, ['\leftarrow ' negPeakText], 'Color','black','FontSize',10);
     ylabel('Voltage(microvolts)');
     xlabel('Time(s)');
     y_cap = 2*max(abs(meansToPlot));
