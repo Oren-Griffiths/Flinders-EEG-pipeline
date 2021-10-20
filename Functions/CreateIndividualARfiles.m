@@ -121,7 +121,7 @@ if strcmp(DataConfig.mode, 'PreICA') == 1
     
     % create a participant mask file that defaults to including everyone. 
     % use the ICAcomps variable to do it because it's very similar.. 
-    ICAcomps{2:end,2} = 1;
+    ICAcomps(2:end,2) = {1};
     writecell(ICAcomps,[outFilePath filesep 'PIDmask.xlsx']);
 end % of PreICA mode check
 
