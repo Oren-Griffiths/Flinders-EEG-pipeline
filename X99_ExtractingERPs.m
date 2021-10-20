@@ -213,9 +213,9 @@ if ~isempty(binContrast)
     involvedBins = find(binContrast);
     for i = 1:length(involvedBins)
         if i == 1
-            contrastAverages = participantAverages{involvedBins(i)}(:,:,:) .*i;
+            contrastAverages = participantAverages{involvedBins(i)}(:,:,:) .*binContrast(i);
         else
-            contrastAverages = contrastAverages + participantAverages{involvedBins(i)}(:,:,:) .*i;
+            contrastAverages = contrastAverages + participantAverages{involvedBins(i)}(:,:,:) .*binContrast(i);
         end
     end
     % only one bin now. 
