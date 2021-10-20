@@ -122,9 +122,10 @@ for k = 1:length(SUB)
                 for ThisChan = 1:DataConfig.TotalChannels{1}
                     % epochs by "samples" (output of FFT, so spectral
                     % powers).
-                    disp(['FFT for Chan: ' num2str(ThisChan) ' PID: ' SUB{k}]);
+                    disp(['FFT for Chan: ' num2str(ThisChan) ' for Bin:' num2str(ThisBin) ' PID: ' SUB{k}]);
                     % intialize output variable.
                     FFT_placeholder = NaN(NoOfEpochs,FFT_length);
+                    NoOfEpochs = size(GoodTrials(ThisBin).data,3); 
                     for ThisEpoch = 1:NoOfEpochs
                         switch baselining
                             case 'subtract'
@@ -142,19 +143,6 @@ for k = 1:length(SUB)
                   participantAverages(k,ThisChan,:,ThisBin) = nanmean(FFT_placeholder,1);
                     
                 end % channel by channel loop.
-                
-                
-                % option here to subtract or z-score.
-                EEG.epochedFFT{thisEpoch}(ThisChan, :) =  ...
-                    applyFFTbaselineZ(SimpleFFT(EEG.epochedData{thisEpoch}(ThisChan,:)));
-                
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % load the mean per epoch into a global variable.
-                temp = squeeze(mean(GoodTrials(ThisBin).data,3));
-                participantAverages(k,:,:,ThisBin) =  temp;
-                display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                
                 
             end
         end % of skipping empty data sets
@@ -260,9 +248,8 @@ if min(inputSize) > 1
         close(gcf);
         
         % and now do a topoplot per bin. 
-        measurePeriod;
         temp = [];
-        temp = squeeze(nanmean(participantAverages(:,1:DataConfig.TotalChannels{1},measureWindow,ThisBin),3));
+        temp = squeeze(nanmean(participantAverages(:,1:DataConfig.TotalChannels{1},measurePeriod,ThisBin),3));
         dataToPlot = squeeze(nanmean(temp,1));
         % now should be: PIDs by chans
         figure;
