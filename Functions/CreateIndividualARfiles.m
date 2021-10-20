@@ -117,6 +117,13 @@ if strcmp(DataConfig.mode, 'PreICA') == 1
             % output that cell into an excel file.
             writecell(ICAcomps,[outFilePath filesep 'ICA_components.xlsx']);
         end
-    end
-end
+    end 
+    
+    % create a participant mask file that defaults to including everyone. 
+    % use the ICAcomps variable to do it because it's very similar.. 
+    ICAcomps{2:end,2} = 1;
+    writecell(ICAcomps,[outFilePath filesep 'PIDmask.xlsx']);
+end % of PreICA mode check
+
+
 end

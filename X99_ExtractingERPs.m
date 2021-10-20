@@ -27,7 +27,8 @@ minEpochs = 30;
 % include the option of generating a "mask" file which has an 1/0 entry for
 % every subject: 1s being included in the grand average analysis and 0s
 % being excluded. If you just want to include everyone, write 'none'.
-maskFile = 'none'; 
+% default file created by X0 file is called 'PID_mask.xlsx'
+maskFile = 'PID_mask.xlsx'; 
 
 % if you want to e.g. compare bin 1 with bin 3 in a 6 bin experiment, then 
 % put in a vector of:  

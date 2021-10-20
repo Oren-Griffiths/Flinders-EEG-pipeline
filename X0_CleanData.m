@@ -5,7 +5,7 @@ global DataConfig
 ConfigFileName = 'WIMR_Config_testing';
 
 % what do we need to do?
-ModeToPerform = 'PostICA';
+ModeToPerform = 'PreICA';
 % 'PreICA' = preICA preparations, including decomposition and plot ICA
 % 'PostICA' = remove ICA components, epoch and baseline
 
