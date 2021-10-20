@@ -344,7 +344,11 @@ for ThisBin = 1:NoOfBins
     line(timesToPlot, minToPlot, 'LineStyle', '--', 'Color', 'r', 'LineWidth', 2);
     line(timesToPlot, maxToPlot, 'LineStyle', '--', 'Color', 'r', 'LineWidth', 2);
     hold off
-    title(['Global Mean And SEMs Of Bin: ' num2str(ThisBin) ' at channel(s): ' string(strjoin(keyChans))]);
+    if isempty(binContrast)
+        title(['Global Mean And SEMs Of Bin: ' num2str(ThisBin) ' at channel(s): ' string(strjoin(keyChans))]);
+    else
+        title(['Global Mean And SEMs Of Difference Wave at channel(s): ' string(strjoin(keyChans))]);
+    end
     ylabel('Voltage(microvolts)');
     xlabel('Time(s)');
     y_cap = 2*max(abs(meansToPlot));
