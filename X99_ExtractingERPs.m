@@ -364,8 +364,8 @@ for ThisBin = 1:NoOfBins
     else
         title(['Global Mean And SEMs Of Difference Wave at channel(s): ' string(strjoin(keyChans))]);
     end
-    text(posPeakTime, posPeak, ['\leftarrow ' posPeakText], 'Color','black','FontSize',10);
-    text(negPeakTime, negPeak, ['\leftarrow ' negPeakText], 'Color','black','FontSize',10);
+    text(posPeakTime, posPeak, ['\leftarrow ' posPeakText], 'Color','green','FontSize',10);
+    text(negPeakTime, negPeak, ['\leftarrow ' negPeakText], 'Color','green','FontSize',10);
     ylabel('Voltage(microvolts)');
     xlabel('Time(s)');
     y_cap = 2*max(abs(meansToPlot));
