@@ -38,6 +38,11 @@ maskFile = 'none';
 % and ideally abs(sum) = 2 as well. 
 binContrast = [];
 
+% do you want the output figures to show information about peak value and
+% latency (in ERP waveforms) and min/max channel values in the topoplots? 
+% if you want this info, set variable to 1. Else leave as 0. 
+showPeakInfo = 1; 
+
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample
 % data per person, averaged values per participant during the measurement
@@ -341,9 +346,9 @@ for ThisBin = 1:NoOfBins
     timesToMeasure = times(measurePeriod);
     posPeakTime = timesToMeasure(posPeakIdx);
     negPeakTime = timesToMeasure(negPeakIdx);
-    posPeakText = ['Max Val = ' num2str(round(posPeak,2)) ' at ' ...
+    posPeakText = ['Max Val = ' num2str(round(posPeak,2)) 'uV at ' ...
         num2str(round(posPeakTime,2)) 's' ];
-    negPeakText = ['Min Val = ' num2str(round(negPeak,2)) ' at ' ...
+    negPeakText = ['Min Val = ' num2str(round(negPeak,2)) 'uV at ' ...
         num2str(round(negPeakTime,2)) 's' ];
     
     % start drawing 
@@ -364,8 +369,11 @@ for ThisBin = 1:NoOfBins
     else
         title(['Global Mean And SEMs Of Difference Wave at channel(s): ' string(strjoin(keyChans))]);
     end
-    text(posPeakTime, posPeak, ['\leftarrow ' posPeakText], 'Color','green','FontSize',10);
-    text(negPeakTime, negPeak, ['\leftarrow ' negPeakText], 'Color','green','FontSize',10);
+    if showPeakInfo == 1
+        % provide some info overlays about peaks. 
+        text(posPeakTime, posPeak, ['\leftarrow ' posPeakText], 'Color','green','FontSize',10);
+        text(negPeakTime, negPeak, ['\leftarrow ' negPeakText], 'Color','green','FontSize',10);
+    end
     ylabel('Voltage(microvolts)');
     xlabel('Time(s)');
     y_cap = 2*max(abs(meansToPlot));
@@ -390,21 +398,41 @@ for ThisBin = 1:NoOfBins
     % sequentially averages by saampels, then across PIDs. But only in
     % measurement window. 
     dataToPlot = nanmean(participantAverages{ThisBin} (:,:,measurePeriod), [3, 1]);
+    % limit the plotting to scalp channels. 
+    dataToPlot = dataToPlot(1:DataConfig.TotalChannels{1});
     % now should be: PIDs by chans
     
     if sum(isnan(dataToPlot)) == length(dataToPlot)
         % don't actually draw the image if there aren't any data.
     else
+        % and grab some information about min/max
+        [minChanVal, minChanIdx] = min(dataToPlot);
+        [maxChanVal, maxChanIdx] = max(dataToPlot);
+        minChanLbl = chanlocs(minChanIdx).labels; 
+        maxChanLbl = chanlocs(maxChanIdx).labels;
+        minText = ['Min Chan: ' minChanLbl ' at ' num2str(round(minChanVal,2)) 'uV'];
+        maxText = ['Max Chan: ' maxChanLbl ' at ' num2str(round(maxChanVal,2)) 'uV'];
         figure;
-        topoplot(dataToPlot(1:DataConfig.TotalChannels{1}), chanlocs, 'electrodes' ,'ptslabels');
+        if showPeakInfo == 1
+            % you've requested info about electrode locations.
+            topoplot(dataToPlot, chanlocs, 'electrodes' ,'ptslabels');
+        else
+            % you just want a standard image. No info overlays.
+            topoplot(dataToPlot, chanlocs);
+        end
         colorbar;
         if isempty(binContrast)
             title(['Topoplot of Bin: ' num2str(ThisBin) 'during measurement window']);
         else
             title(['Topoplot of difference wave during measurement window']);
         end
-        colourCap = 1.5*max(abs(dataToPlot(1:DataConfig.TotalChannels{1})));
+        colourCap = 1.5*max(abs(dataToPlot));
         caxis([-1*colourCap, colourCap]);
+        if showPeakInfo == 1
+            % add text related to min/max
+            annotation('textbox', [0, 0.15, 0, 0], 'string', minText, 'FitBoxToText','on');
+            annotation('textbox', [0, 0.05, 0, 0], 'string', maxText, 'FitBoxToText','on');
+        end
         f = gcf;
         f.Units = 'inches';
         f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
