@@ -12,40 +12,42 @@ ConfigFileName = 'WIMR_Config_testing';
 % than once with different channels chosen each time.
 keyChans = {'FCz', 'Fz', 'Cz', 'FC1', 'FC2'};
 
-% what time period (ms) do you want visualized. This will obviously break
-% if you choose an area large than the epoch declared in DataConfig, so
-% choose sensibly.
-wholeEpoch = [-200, 800];
-
 % choose a time period you want to take the average across. Measured in ms.
-measureWindow = [50, 150];
+measureWindow = [-1000, 1000];
+
+% choose a frequency target (targetHz), and a visualization window 
+% (rangeHz) around that value. 
+targetHz = 15;
+rangeHz = [3, 40];
+% how do you want to do baselining?
+baselining = 'none'; % or 'none' or 'z'
 
 % if a person has less than X clean epochs are AR-rejection, then remove
 % them from the averaging process. Set X. Put empty '[]' to ignore min.
-minEpochs = 30;
+minEpochs = 10;
 
 % include the option of generating a "mask" file which has an 1/0 entry for
 % every subject: 1s being included in the grand average analysis and 0s
 % being excluded. If you just want to include everyone, write 'none'.
 % default file created by X0 file is called 'PIDmask.xlsx'
-maskFile = 'none'; 
+maskFile = 'none';
 
-% if you want to e.g. compare bin 1 with bin 3 in a 6 bin experiment, then 
-% put in a vector of:  
+% if you want to e.g. compare bin 1 with bin 3 in a 6 bin experiment, then
+% put in a vector of:
 % [1 0 -1 0 0 0 ]
 % needs to have same number of entries as there are bins. Complex contrasts
 % supported, e.g. [ 1 -0.5 -0.5 0 0 0]. If you just want all bins considered
 % separately, leave it blank. Must be normalized (i.e. sum to 0), ...
-% and ideally abs(sum) = 2 as well. 
+% and ideally abs(sum) = 2 as well.
 binContrast = [];
 
 % do you want the output figures to show information about peak value and
-% latency (in ERP waveforms) and min/max channel values in the topoplots? 
-% if you want this info, set variable to 1. Else leave as 0. 
-showPeakInfo = 1; 
+% latency (in ERP waveforms) and min/max channel values in the topoplots?
+% if you want this info, set variable to 1. Else leave as 0.
+showPeakInfo = 1;
 % do you want to add a fine overlay of each individual to the grand average
 % waveforms (e.g. to check for presence of outliers)? If so, set to 1.
-showIndividualTraces = 1; 
+showIndividualTraces = 1;
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample
 % data per person, averaged values per participant during the measurement
@@ -118,16 +120,29 @@ else % possible error.
     display(['Outputted data are this long:' num2str(LengthOfEpoch)]);
 end
 
+% check that the values inputted are sensible. 
+if targetHz < rangeHz(1) || targetHz > rangeHz(2)
+    disp('****************************************************');
+    disp('Target frequency value is not in the frequency range. ');
+    disp('****************************************************');
+end
+
+% generate an x-axis for plotting. Measurement is now in seconds.
+times = ([1:LengthOfEpoch].*1/srate) + (DataConfig.EpochMin{1}/1000);
+% review the period that we wish to evaluate. 
+measurePeriod = (times > measureWindow (1)/1000 & times < measureWindow(2)/1000);
+times = times(measurePeriod);
+LengthOfEpoch = length(times); % need to trim time series pre FFT (only in FFT).
+FFT_length = floor(LengthOfEpoch/2)+1;
+HzBins = 0: (srate/2)/(FFT_length-1)  : srate/2;
+
 % initialize a variable full of not-numbers (0s,1s would bias means if an
 % error was made somewhere down the line. Here errors make it break).
 % structure: a n-element cell array (cells are bins). Each bin contains a
 % 3d structure: PIDs by chans by samples.
 for ThisBin = 1:NoOfBins
-    participantAverages{ThisBin} = NaN(length(DataConfig.SUB),NoOfChans,LengthOfEpoch); % 3d data structure per bin.
+    participantAverages{ThisBin} = NaN(length(DataConfig.SUB),NoOfChans,FFT_length); % 3d data structure per bin.
 end
-
-% generate an x-axis for plotting. Measurement is now in seconds.
-times = ([1:LengthOfEpoch].*1/srate) + (DataConfig.EpochMin{1}/1000);
 
 % find out who to include in analysis and who to exclude.
 if strcmp(maskFile, 'none')
@@ -153,6 +168,8 @@ else
         maskVector = [];
     end
 end
+
+
 %% loop through SUBS and gather *per participant* averages by averaging across epochs (within bins).
 SUB = DataConfig.SUB;
 for k = 1:length(SUB)
@@ -166,10 +183,10 @@ for k = 1:length(SUB)
     
     % adjust the data according to bin contrasts to streamline the data
     % down to a single (e.g. difference) time series, if that is what's
-    % declared. 
+    % declared.
     
     if isempty(binContrast)
-    % do nothing. leave the input alone.
+        % do nothing. leave the input alone.
     else % possible some bins are missing in some participants. correct for that.
         residual = length(binContrast) - numel(GoodTrials);
         % fill GoodTrials variable in with blank cells if needed.
@@ -178,13 +195,13 @@ for k = 1:length(SUB)
                 display('More bins in data than in binContrast vector. How?');
             else % add some empty bins into the GoodTrials variable.
                 for missingBin = 1:residual
-                GoodTrials(missingBin+numel(GoodTrials)).data = [];
-                GoodTrials(missingBin+numel(GoodTrials)).ID = [];
-                GoodTrials(missingBin+numel(GoodTrials)).chanlocs = GoodTrials(1).chanlocs;
-                GoodTrials(missingBin+numel(GoodTrials)).srate = GoodTrials(1).srate;
+                    GoodTrials(missingBin+numel(GoodTrials)).data = [];
+                    GoodTrials(missingBin+numel(GoodTrials)).ID = [];
+                    GoodTrials(missingBin+numel(GoodTrials)).chanlocs = GoodTrials(1).chanlocs;
+                    GoodTrials(missingBin+numel(GoodTrials)).srate = GoodTrials(1).srate;
                 end
             end
-            % the math/adjustment is done down below. 
+            % the math/adjustment is done down below.
         end
     end
     
@@ -195,28 +212,45 @@ for k = 1:length(SUB)
         else % check to see if there are any data there.
             if isempty(GoodTrials(ThisBin).data)
                 % do nothing, this entry is already all NaNs
+                display(['Skipping SUB ' SUB{k} ' Bin ' num2str(ThisBin) '. No data.']);
             else
-                % check to see if there are enough epochs for a stable
-                % estimate.
                 if isempty(minEpochs) || size(GoodTrials(ThisBin).data,3) > minEpochs
-                    % load the mean per epoch into a global variable.
-                    temp = squeeze(nanmean(GoodTrials(ThisBin).data,3));
+                    
+                    % just use the scalp channels for this analysis.
                     for ThisChan = 1:NoOfChans
-                        % bin = cell. In that: PIDs by chans by samples.
-                        participantAverages{ThisBin}(k,ThisChan,:) =  temp(ThisChan,:);
-                    end
-                    display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);  
-                else
-                    display(['Skipping SUB ' SUB{k} ' Bin ' num2str(ThisBin) '. Too few epochs.']);  
-                end
-            end
-        end % of skipping empty data sets
+                        % epochs by "samples" (output of FFT, so spectral
+                        % powers).
+                        disp(['FFT for Chan: ' num2str(ThisChan) ' for Bin:' num2str(ThisBin) ' PID: ' SUB{k}]);
+                        % intialize output variable.
+                        NoOfEpochs = size(GoodTrials(ThisBin).data,3);
+                        FFT_placeholder = NaN(NoOfEpochs,FFT_length);
+                        for ThisEpoch = 1:NoOfEpochs
+                            switch baselining
+                                case 'subtract'
+                                    FFT_placeholder(ThisEpoch,:) = ...
+                                        applyFFTbaseline(SimpleFFT(GoodTrials(ThisBin).data(ThisChan,measurePeriod,ThisEpoch)))';
+                                case 'z'
+                                    FFT_placeholder(ThisEpoch,:) = ...
+                                        applyFFTbaselineZ(SimpleFFT(GoodTrials(ThisBin).data(ThisChan,measurePeriod,ThisEpoch)))';
+                                case 'none'
+                                    FFT_placeholder(ThisEpoch,:) = ...
+                                        SimpleFFT(GoodTrials(ThisBin).data(ThisChan,measurePeriod,ThisEpoch));
+                            end
+                        end % of epoch by epoch loop.
+                        % structure of data per bin: PIDs by chans by samples.
+                        participantAverages{ThisBin}(k,ThisChan,:) = nanmean(FFT_placeholder,1);
+                    end % channel by channel loop.
+                end % of checking against min number of epochs. 
+            end % of skipping empty data sets 2
+        end % of skipping empty data sets 1
     end % of bin by bin loop.
 end % of subject by subject loop
 
+% sanity check to make sure it's outputting approriate spectral values.
+% plot(HzBins,nanmean(FFT_placeholder));
 
 %% correct or adjust the data, if necessary
-% will do the bin contrast below when dimensionality reduced. 
+% will do the bin contrast below when dimensionality reduced.
 if ~isempty(binContrast)
     involvedBins = find(binContrast);
     for i = 1:length(involvedBins)
@@ -226,7 +260,7 @@ if ~isempty(binContrast)
             contrastAverages = contrastAverages + participantAverages{involvedBins(i)}(:,:,:) .*binContrast(i);
         end
     end
-    % only one bin now. 
+    % only one bin now.
     NoOfBins = 1;
     % move the data back into four dimensional structure.
     clear participantAverages; % get rid of structure of variable. restate.
@@ -236,7 +270,7 @@ end
 
 % apply the masking vector to exclude some participants ,if appropriate.
 if isempty(maskVector)
-    % do nothing and leave participantAverages intact. 
+    % do nothing and leave participantAverages intact.
 else
     for ThisBin = 1:NoOfBins
         participantAverages{ThisBin}(~maskVector, :, :) = NaN;
@@ -246,15 +280,22 @@ else
 end
 
 %% and now start to calculate the output the data needed.
-if ~exist('ERP_GrandAverages', 'dir')
-    mkdir('ERP_GrandAverages');
+outputFolder = 'FFT_GrandAverages';
+if ~exist(outputFolder, 'dir')
+    mkdir(outputFolder);
 end
 
-keyPeriod = (times > wholeEpoch(1)/1000 & times < wholeEpoch(2)/1000);
+keyFreqs = (HzBins > rangeHz(1) & HzBins < rangeHz(2));
+% a=[34.8 31.2 29 26.7 39.5];%dummy data
+% n=33;
+distFromTarget = abs(HzBins-targetHz);
+[minDev,targetHz_idx] = min(distFromTarget);
+targetHz_actual = HzBins(targetHz_idx);
+
 % get channel numbers
 % that is, convert channel indices from channel names.
 % have done this assuming that all bins have the same channel location
-% structure, but robust to missing values for some bins. 
+% structure, but robust to missing values for some bins.
 
 for ThisChan = 1:length(keyChans)
     keyChanIdx(ThisChan) = find(strcmp({chanlocs.labels}, keyChans{ThisChan})==1);
@@ -268,59 +309,35 @@ end
 for ThisBin = 1:NoOfBins
     % pool the channels (if you have a multi channel montage).
     temp = squeeze(nanmean(participantAverages{ThisBin}(:,keyChanIdx,:),2));
-    % limit to the relevant epoch time period.
-    tempForEval{ThisBin} = temp; % will use for evaluation of key window two steps down.
-    tempForOutput{ThisBin} = temp(:,keyPeriod);
+    % now in PID by samples (freqs) format.
+    tempForOutput{ThisBin} = temp;
 end
 
 % save that raw data (i.e. tempForOutput)
-rawdataFilename = [pwd filesep 'ERP_GrandAverages' filesep 'RawOutput_PIDbySamples.xlsx'];
+rawdataFilename = [pwd filesep outputFolder filesep 'RawOutput_PIDbyHz.xlsx'];
 for ThisBin = 1:NoOfBins
-    % declare a useful tab name
-    if isempty(binContrast)
-    tabname = ['Bin' num2str(ThisBin)];
-    else
-        tabname = 'DifferenceWave';
-    end
-    % write the data
-    writematrix(tempForOutput{ThisBin}, rawdataFilename, 'Sheet', tabname, 'Range','B3');
-    % write the row headers
-    writecell(DataConfig.SUB', rawdataFilename, 'Sheet', tabname, 'Range', 'A3');
-    writecell({'Times'}, rawdataFilename, 'Sheet', tabname, 'Range', 'A1');
-    writecell({'PID'}, rawdataFilename, 'Sheet', tabname, 'Range', 'A2');
-    % write the column headers
-    writematrix(times(keyPeriod), rawdataFilename, 'Sheet', tabname, 'Range','B1');
-end
-
-
-% when do we want to quantify as the "key" period?
-measurePeriod = (times > measureWindow (1)/1000 & times < measureWindow(2)/1000);
-
-% and now do the same, but average across measurement window and outputting
-% a CSV with PID and mean value in window.
-
-% tempForEval is the variable we need to use now.
-% structure: a n-element cell array (cells are bins). Each bin contains a
-% 2d structure: PIDs by samples (measured at the declared chan).
-
-processedFilename = [pwd filesep 'ERP_GrandAverages' filesep 'Processed_meanVoltagePerPerson.xlsx'];
-for ThisBin = 1:NoOfBins
-    % go bin by bin and take average of all samples within measurePeriod.
-    tempForEval{ThisBin} = nanmean(tempForEval{ThisBin}(:,measurePeriod),2);
     % declare a useful tab name
     if isempty(binContrast)
         tabname = ['Bin' num2str(ThisBin)];
     else
-        tabname = 'DifferenceWave';
+        tabname = 'DifferenceFFT';
     end
-    % write that as output.
-    writematrix(tempForEval{ThisBin}, processedFilename, 'Sheet', tabname, 'Range','B3');
+    % write the data
+    % limit to the relevant epoch Hz range.
+    writematrix(tempForOutput{ThisBin}(:,keyFreqs), rawdataFilename, 'Sheet', tabname, 'Range','B3');
     % write the row headers
-    writecell(DataConfig.SUB', processedFilename, 'Sheet', tabname, 'Range', 'A3');
-    writecell({'PID'}, processedFilename, 'Sheet', tabname, 'Range', 'A2');
+    writecell(DataConfig.SUB', rawdataFilename, 'Sheet', tabname, 'Range', 'A3');
+    writecell({'Hz'}, rawdataFilename, 'Sheet', tabname, 'Range', 'A1');
+    writecell({'PID'}, rawdataFilename, 'Sheet', tabname, 'Range', 'A2');
     % write the column headers
-    writecell({'MeanOfMeasurementWindow'}, processedFilename, 'Sheet', tabname, 'Range','B2');
-end % of bin by bin loop.
+    writematrix(HzBins(keyFreqs), rawdataFilename, 'Sheet', tabname, 'Range','B1');
+    % and no need do have specific sheet for key DV, as it's contained
+    % here. Just use the *** indicator to mark closest value to target
+    % frequency so it's easy to tell.
+    emptyCell = cell(1,length(HzBins)); 
+    emptyCell{targetHz_idx} = '***';
+    writecell(emptyCell(keyFreqs), rawdataFilename, 'Sheet', tabname, 'Range','B2');
+end
 
 
 %% and now start drawing.
@@ -331,81 +348,66 @@ end % of bin by bin loop.
 % and we want separate figures for each bin.
 
 for ThisBin = 1:NoOfBins
-    timesToPlot = times(keyPeriod);
+    HzBinsToPlot = HzBins(keyFreqs);
     % report grand average(across PIDs) for nominated chans in this
     % bin.
     % data in PID by samples format, so average across PIDs.
-    meansToPlot = nanmean(tempForOutput{ThisBin},1);
-    SEMs = std(tempForOutput{ThisBin},0,1, 'omitnan');
-    % now should be: PIDs by samples
-    minToPlot = meansToPlot - SEMs;
-    maxToPlot = meansToPlot + SEMs;
+    FreqsToPlot = nanmean(tempForOutput{ThisBin}(:,keyFreqs),1);
     
-    % find peak within measurement window? 
+    % find peak within measurement window?
     % PIDs by chans by samples.
-    findingPeaks = squeeze(nanmean(participantAverages{ThisBin} (:,keyChanIdx,measurePeriod), [2, 1]));
-    [posPeak, posPeakIdx] = max(findingPeaks);
-    [negPeak, negPeakIdx] = min(findingPeaks);
-    timesToMeasure = times(measurePeriod);
-    posPeakTime = timesToMeasure(posPeakIdx);
-    negPeakTime = timesToMeasure(negPeakIdx);
-    posPeakText = ['Max Val = ' num2str(round(posPeak,2)) 'uV at ' ...
-        num2str(round(posPeakTime,2)) 's' ];
-    negPeakText = ['Min Val = ' num2str(round(negPeak,2)) 'uV at ' ...
-        num2str(round(negPeakTime,2)) 's' ];
-    
-    % start drawing 
+    [posPeak, posPeakIdx] = max(FreqsToPlot);
+    posPeakHz = HzBinsToPlot(posPeakIdx);
+    posPeakText = ['Max Val = ' num2str(round(posPeak,2)) 'uV^2/Hz at ' ...
+        num2str(round(posPeakHz,2)) 'Hz' ];
+
+    % start drawing
     figure;
     hold on
-    xline(0, '-k'); % show time zero
-    xline(measureWindow(1)/1000, ':k'); % show start of eval period.
-    xline(measureWindow(2)/1000, ':k'); % show end of eval period.
     if showIndividualTraces == 1
         for ThisPID = 1:size(tempForOutput{ThisBin},1)
-            line(timesToPlot, tempForOutput{ThisBin}(ThisPID,:), 'LineStyle', ':', 'Color', 'k', 'LineWidth', 0.5);
+            line(HzBinsToPlot, tempForOutput{ThisBin}(ThisPID,keyFreqs), 'LineStyle', ':', 'Color', 'k', 'LineWidth', 0.5);
         end
     end
-    line(timesToPlot, meansToPlot, 'LineStyle', '-', 'Color', 'r', 'LineWidth', 2);
-    line(timesToPlot, minToPlot, 'LineStyle', '--', 'Color', 'r', 'LineWidth', 2);
-    line(timesToPlot, maxToPlot, 'LineStyle', '--', 'Color', 'r', 'LineWidth', 2);
+    % main line to draw.
+    line(HzBinsToPlot, FreqsToPlot, 'LineStyle', '-', 'Color', 'k', 'LineWidth', 2);
     hold off
+    
+    % extra details for figure.
     if isempty(binContrast)
-        title(['Global Mean And SEMs Of Bin: ' num2str(ThisBin) ' at channel(s): ' string(strjoin(keyChans))]);
+        title(['FFT of target range in bin: ' num2str(ThisBin) ' at channel(s): ' string(strjoin(keyChans))]);
     else
-        title(['Global Mean And SEMs Of Difference Wave at channel(s): ' string(strjoin(keyChans))]);
+        title(['FFT of target range in difference wave at channel(s): ' string(strjoin(keyChans))]);
     end
     if showPeakInfo == 1
-        % provide some info overlays about peaks. 
-        text(posPeakTime, posPeak, ['\leftarrow ' posPeakText], 'Color','green','FontSize',10);
-        text(negPeakTime, negPeak, ['\leftarrow ' negPeakText], 'Color','green','FontSize',10);
+        % provide some info overlays about peaks.
+        text(posPeakHz, posPeak, ['\leftarrow ' posPeakText], 'Color','green','FontSize',10);
     end
-    ylabel('Voltage(microvolts)');
-    xlabel('Time(s)');
-    y_cap = 2*max(abs(meansToPlot));
+    ylabel('Spectral power density(uV^2/Hz)');
+    xlabel('Hz');
+    y_cap = 2*max(abs(FreqsToPlot));
     ylim([-1*y_cap, y_cap]);
     % change some values and save.
     f = gcf;
     f.Units = 'inches';
     f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-    fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandAverage.png'];
+    fig_filename = [outputFolder filesep 'Bin_' num2str(ThisBin) '_GrandAverageFFT.png'];
     disp(['Saving ERP image ' fig_filename]);
     exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
     close(gcf);
     
     % and now do a topoplot per bin.
     
-    % ok, need to pull mean voltage over measurement window, per
-    % channel. And that needs to be averaged across participants too.
-
-    % participantAverages
+    % here we just need to pull the value per channel associated with the
+    % target frequency. We already know it's here: targetHz_idx
+    % And the raw data to draw from is: participantAverages.
     % structure: a n-element cell array (cells are bins). Each bin contains a
     % 3d structure: PIDs by chans by samples.
-    % sequentially averages by saampels, then across PIDs. But only in
-    % measurement window. 
-    dataToPlot = nanmean(participantAverages{ThisBin} (:,:,measurePeriod), [3, 1]);
-    % limit the plotting to scalp channels. 
+    % average across channels (if more than one key channel chosen).
+    
+    dataToPlot = nanmean(participantAverages{ThisBin} (:,:,targetHz_idx), 1);
+    % limit the plotting to scalp channels.
     dataToPlot = dataToPlot(1:DataConfig.TotalChannels{1});
-    % now should be: PIDs by chans
     
     if sum(isnan(dataToPlot)) == length(dataToPlot)
         % don't actually draw the image if there aren't any data.
@@ -413,7 +415,7 @@ for ThisBin = 1:NoOfBins
         % and grab some information about min/max
         [minChanVal, minChanIdx] = min(dataToPlot);
         [maxChanVal, maxChanIdx] = max(dataToPlot);
-        minChanLbl = chanlocs(minChanIdx).labels; 
+        minChanLbl = chanlocs(minChanIdx).labels;
         maxChanLbl = chanlocs(maxChanIdx).labels;
         minText = ['Min Chan: ' minChanLbl ' at ' num2str(round(minChanVal,2)) 'uV'];
         maxText = ['Max Chan: ' maxChanLbl ' at ' num2str(round(maxChanVal,2)) 'uV'];
@@ -427,10 +429,13 @@ for ThisBin = 1:NoOfBins
         end
         colorbar;
         if isempty(binContrast)
-            title(['Topoplot of Bin: ' num2str(ThisBin) 'during measurement window']);
+            titleText = ['Topoplot of Bin: ' num2str(ThisBin) ...
+                ' at ' num2str(targetHz_actual) 'Hz'];
         else
-            title(['Topoplot of difference wave during measurement window']);
+                        titleText = ['Topoplot of difference wave at ' ...
+                num2str(targetHz_actual) 'Hz'];
         end
+        title(titleText);
         colourCap = 1.5*max(abs(dataToPlot));
         caxis([-1*colourCap, colourCap]);
         if showPeakInfo == 1
@@ -441,7 +446,7 @@ for ThisBin = 1:NoOfBins
         f = gcf;
         f.Units = 'inches';
         f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-        fig_filename = ['ERP_GrandAverages' filesep 'Bin_' num2str(ThisBin) '_GrandTopoplot.png'];
+        fig_filename = [outputFolder filesep 'Bin_' num2str(ThisBin) '_TargetHzTopoplot.png'];
         disp(['Saving topoimage image ' fig_filename]);
         exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
         close(gcf);
