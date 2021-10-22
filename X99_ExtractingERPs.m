@@ -39,6 +39,13 @@ maskFile = 'none';
 % and ideally abs(sum) = 2 as well. 
 binContrast = [-1, -1 , 1, 1, 0, 0];
 
+% You can specify an extra lowpass filter that may be needed for terrible
+% data. By default this should be left as 'none', but for messy data
+% you may be forced to filter out HF noise again. You can do the same as
+% what you've done previously (type 'same'). Otherwise choose a value e.g.
+% 40Hz and enter it as a string '40'.
+extraLowPass = 40;
+
 % do you want the output figures to show information about peak value and
 % latency (in ERP waveforms) and min/max channel values in the topoplots? 
 % if you want this info, set variable to 1. Else leave as 0. 
@@ -153,6 +160,27 @@ else
         maskVector = [];
     end
 end
+
+% figure out the extra lowpass filter, if required
+if strcmp(type(extraLowPass), 'char')
+    switch extraLowPass
+        case 'none'
+            extraLowPass_num = [];
+            disp('No extra filter applied');
+        case 'same'
+            extraLowPass_num = DataConfig.LPfilter{1};
+            disp(['Extra filter applied: ' num2str(DataConfig.LPfilter{1}) 'Hz' ]);
+        otherwise
+            extraLowPass_num = str2num(extraLowPass);
+            disp(['Extra filter applied: ' extraLowPass 'Hz']);
+    end
+else
+    disp('Error in supplied extra filter. None applied');
+    extraLowPass_num = [];
+end
+% extraLowPass = DataConfig.LPfilter{1}; % 
+
+
 %% loop through SUBS and gather *per participant* averages by averaging across epochs (within bins).
 SUB = DataConfig.SUB;
 for k = 1:length(SUB)
@@ -202,8 +230,24 @@ for k = 1:length(SUB)
                     % load the mean per epoch into a global variable.
                     temp = squeeze(nanmean(GoodTrials(ThisBin).data,3));
                     for ThisChan = 1:NoOfChans
-                        % bin = cell. In that: PIDs by chans by samples.
-                        participantAverages{ThisBin}(k,ThisChan,:) =  temp(ThisChan,:);
+                        if ~isempty(extraLowPass_num) 
+                            % particularly noisy data may need an extra
+                            % lowpass filter (if cleanline + BP doesn't
+                            % grab everything)
+                            if k == 1 && ThisBin == 1
+                                % you only need to design the filter on the
+                                % first loop.
+                                [~,dFilter] = lowpass(temp(ThisChan,:),extraLowPass_num, srate);
+                                % and then apply that filter in a
+                                % zero-phase compliant way. 
+                                participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));   
+                            else
+                                participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));
+                            end
+                            
+                        else % no additional filters. Just take the data as they are.
+                            participantAverages{ThisBin}(k,ThisChan,:) = temp(ThisChan,:);
+                        end
                     end
                     display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);  
                 else
