@@ -37,7 +37,7 @@ maskFile = 'none';
 % supported, e.g. [ 1 -0.5 -0.5 0 0 0]. If you just want all bins considered
 % separately, leave it blank. Must be normalized (i.e. sum to 0), ...
 % and ideally abs(sum) = 2 as well. 
-binContrast = [];
+binContrast = [-1, -1 , 1, 1, 0, 0];
 
 % do you want the output figures to show information about peak value and
 % latency (in ERP waveforms) and min/max channel values in the topoplots? 
@@ -446,7 +446,35 @@ for ThisBin = 1:NoOfBins
         exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
         close(gcf);
     end
+end % of cycling through bins.
+
+% draw one more figure that captures all bins using default matlab
+% settings. Good for comparing across bins, but only if there are multiple
+% bins.
+
+if isempty(binContrast) & NoOfBins > 1
+    dataToPlot = zeros(NoOfBins,length(timesToPlot));
+    for ThisBin = 1:NoOfBins
+        dataToPlot(ThisBin,:) = nanmean(tempForOutput{ThisBin},1);
+        BinLbls{ThisBin} = ['Bin ' num2str(ThisBin)];
+    end
+    figure;
+    plot(timesToPlot,dataToPlot);
+    %
+    title('AllBins');
+    legend(BinLbls);
+    xline(0, '-k'); % show time zero
+    ylabel('Voltage(microvolts)');
+    xlabel('Time(s)');
+    y_cap = 2*max(abs(dataToPlot(:)));
+    ylim([-1*y_cap, y_cap]);
+    %
+    f = gcf;
+    f.Units = 'inches';
+    f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
+    fig_filename = ['ERP_GrandAverages' filesep 'AllBinsTogether.png'];
+    disp('Saving all bin waveform');
+    exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
+    close(gcf);
 end
-
-
 
