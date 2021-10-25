@@ -37,7 +37,7 @@ maskFile = 'none';
 % supported, e.g. [ 1 -0.5 -0.5 0 0 0]. If you just want all bins considered
 % separately, leave it blank. Must be normalized (i.e. sum to 0), ...
 % and ideally abs(sum) = 2 as well. 
-binContrast = [-1, -1 , 1, 1, 0, 0];
+binContrast = [];
 
 % You can specify an extra lowpass filter that may be needed for terrible
 % data. By default this should be left as 'none', but for messy data
@@ -240,9 +240,11 @@ for k = 1:length(SUB)
                                 [~,dFilter] = lowpass(temp(ThisChan,:),extraLowPass_num, srate);
                                 % and then apply that filter in a
                                 % zero-phase compliant way. 
-                                participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));   
+                                participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:)); 
+                                epochCounts{ThisBin}(k) = size(GoodTrials(ThisBin).data,3);
                             else
                                 participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));
+                                epochCounts{ThisBin}(k) = size(GoodTrials(ThisBin).data,3);
                             end
                             
                         else % no additional filters. Just take the data as they are.
@@ -359,11 +361,14 @@ for ThisBin = 1:NoOfBins
     end
     % write that as output.
     writematrix(tempForEval{ThisBin}, processedFilename, 'Sheet', tabname, 'Range','B3');
+    % write the epoch counts
+    writematrix(epochCounts{ThisBin}', processedFilename, 'Sheet', tabname, 'Range','C3');
     % write the row headers
     writecell(DataConfig.SUB', processedFilename, 'Sheet', tabname, 'Range', 'A3');
     writecell({'PID'}, processedFilename, 'Sheet', tabname, 'Range', 'A2');
     % write the column headers
-    writecell({'MeanOfMeasurementWindow'}, processedFilename, 'Sheet', tabname, 'Range','B2');
+    writecell({'MeanVoltage'}, processedFilename, 'Sheet', tabname, 'Range', 'B2');
+    writecell({'NoOfEpochs'}, processedFilename, 'Sheet', tabname, 'Range', 'C2');
 end % of bin by bin loop.
 
 
