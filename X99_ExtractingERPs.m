@@ -10,7 +10,7 @@ ConfigFileName = 'WIMR_Config_testing';
 % channel, it will average across them (i.e. treat it as a single montage).
 % If you want to compare different channels/AOIs, run this script more
 % than once with different channels chosen each time.
-keyChans = {'FCz', 'Fz', 'Cz', 'FC1', 'FC2'};
+keyChans = {'FCz', 'Fz', 'Cz', 'FC1', 'FC2', 'C1', 'C2', 'F1', 'F2'};
 
 % what time period (ms) do you want visualized. This will obviously break
 % if you choose an area large than the epoch declared in DataConfig, so
@@ -111,6 +111,16 @@ for ThisBin = 1:numel(GoodTrials)
         end
     end
 end
+
+% get channel numbers
+% that is, convert channel indices from channel names.
+% have done this assuming that all bins have the same channel location
+% structure, but robust to missing values for some bins. 
+for ThisChan = 1:length(keyChans)
+    keyChanIdx(ThisChan) = find(strcmp({chanlocs.labels}, keyChans{ThisChan})==1);
+    ThisBin = NoOfBins; % skip out of the loop.
+end
+
 
 % and let's get the values from another method too. Makes sure everything
 % aligns.
@@ -241,10 +251,15 @@ for k = 1:length(SUB)
                                 % and then apply that filter in a
                                 % zero-phase compliant way. 
                                 participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:)); 
-                                epochCounts{ThisBin}(k) = size(GoodTrials(ThisBin).data,3);
+                                % 3d structure: PIDs by chans by samples.
+                                validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan'))); 
+                                epochCounts{ThisBin}(k) = validEpochs;
+                                % 3d structure: PIDs by chans by samples.
+
                             else
                                 participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));
-                                epochCounts{ThisBin}(k) = size(GoodTrials(ThisBin).data,3);
+                                validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
+                                epochCounts{ThisBin}(k) = validEpochs;
                             end
                             
                         else % no additional filters. Just take the data as they are.
@@ -297,15 +312,6 @@ if ~exist('ERP_GrandAverages', 'dir')
 end
 
 keyPeriod = (times > wholeEpoch(1)/1000 & times < wholeEpoch(2)/1000);
-% get channel numbers
-% that is, convert channel indices from channel names.
-% have done this assuming that all bins have the same channel location
-% structure, but robust to missing values for some bins. 
-
-for ThisChan = 1:length(keyChans)
-    keyChanIdx(ThisChan) = find(strcmp({chanlocs.labels}, keyChans{ThisChan})==1);
-    ThisBin = NoOfBins; % skip out of the loop.
-end
 
 % participantAverages.
 % structure: a n-element cell array (cells are bins). Each bin contains a
