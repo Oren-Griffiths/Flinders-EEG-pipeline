@@ -44,7 +44,7 @@ binContrast = [-1, -1 , 1, 1, 0, 0];
 % you may be forced to filter out HF noise again. You can do the same as
 % what you've done previously (type 'same'). Otherwise choose a value e.g.
 % 40Hz and enter it as a string '40'.
-extraLowPass = 40;
+extraLowPass = 'same';
 
 % do you want the output figures to show information about peak value and
 % latency (in ERP waveforms) and min/max channel values in the topoplots? 
@@ -162,7 +162,7 @@ else
 end
 
 % figure out the extra lowpass filter, if required
-if strcmp(type(extraLowPass), 'char')
+if strcmp(class(extraLowPass), 'char')
     switch extraLowPass
         case 'none'
             extraLowPass_num = [];
