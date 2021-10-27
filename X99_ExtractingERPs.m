@@ -46,6 +46,13 @@ binContrast = [];
 % 40Hz and enter it as a string '40'.
 extraLowPass = 'same';
 
+% you can shift all epochs in a bin either forwards (+ values) or backwards
+% (- values) in time by a integer number of samples (e.g. 4ms at 256hz).
+% You will mostly leave it empty and this will be skipped. But if you enter
+% any values, you have to put one value per bin, e.g. [ 0 0 -10] for 3 bin
+% analysis. 
+sampleCorrection = [0,0,0,0,-8,-8];
+
 % do you want the output figures to show information about peak value and
 % latency (in ERP waveforms) and min/max channel values in the topoplots? 
 % if you want this info, set variable to 1. Else leave as 0. 
@@ -204,10 +211,10 @@ for k = 1:length(SUB)
     
     % adjust the data according to bin contrasts to streamline the data
     % down to a single (e.g. difference) time series, if that is what's
-    % declared. 
+    % declared.
     
     if isempty(binContrast)
-    % do nothing. leave the input alone.
+        % do nothing. leave the input alone.
     else % possible some bins are missing in some participants. correct for that.
         residual = length(binContrast) - numel(GoodTrials);
         % fill GoodTrials variable in with blank cells if needed.
@@ -216,13 +223,13 @@ for k = 1:length(SUB)
                 display('More bins in data than in binContrast vector. How?');
             else % add some empty bins into the GoodTrials variable.
                 for missingBin = 1:residual
-                GoodTrials(missingBin+numel(GoodTrials)).data = [];
-                GoodTrials(missingBin+numel(GoodTrials)).ID = [];
-                GoodTrials(missingBin+numel(GoodTrials)).chanlocs = GoodTrials(1).chanlocs;
-                GoodTrials(missingBin+numel(GoodTrials)).srate = GoodTrials(1).srate;
+                    GoodTrials(missingBin+numel(GoodTrials)).data = [];
+                    GoodTrials(missingBin+numel(GoodTrials)).ID = [];
+                    GoodTrials(missingBin+numel(GoodTrials)).chanlocs = GoodTrials(1).chanlocs;
+                    GoodTrials(missingBin+numel(GoodTrials)).srate = GoodTrials(1).srate;
                 end
             end
-            % the math/adjustment is done down below. 
+            % the math/adjustment is done down below.
         end
     end
     
@@ -240,7 +247,7 @@ for k = 1:length(SUB)
                     % load the mean per epoch into a global variable.
                     temp = squeeze(nanmean(GoodTrials(ThisBin).data,3));
                     for ThisChan = 1:NoOfChans
-                        if ~isempty(extraLowPass_num) 
+                        if ~isempty(extraLowPass_num)
                             % particularly noisy data may need an extra
                             % lowpass filter (if cleanline + BP doesn't
                             % grab everything)
@@ -249,26 +256,45 @@ for k = 1:length(SUB)
                                 % first loop.
                                 [~,dFilter] = lowpass(temp(ThisChan,:),extraLowPass_num, srate);
                                 % and then apply that filter in a
-                                % zero-phase compliant way. 
-                                participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:)); 
-                                % 3d structure: PIDs by chans by samples.
-                                validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan'))); 
+                                % zero-phase compliant way.
+                                participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));
+                                %
+                                validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
                                 epochCounts{ThisBin}(k) = validEpochs;
-                                % 3d structure: PIDs by chans by samples.
-
                             else
                                 participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));
+                                %
                                 validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
                                 epochCounts{ThisBin}(k) = validEpochs;
                             end
-                            
                         else % no additional filters. Just take the data as they are.
                             participantAverages{ThisBin}(k,ThisChan,:) = temp(ThisChan,:);
+                            validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
+                            epochCounts{ThisBin}(k) = validEpochs;
                         end
-                    end
-                    display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);  
+                        % apply a time correction, if requested.
+                        if ~isempty(sampleCorrection)
+                            % time correction sought...
+                            if sampleCorrection(ThisBin) == 0
+                                % but not during this bin. skip.
+                            else
+                                % yep, need to adjust this paricular bin.
+                                shft = abs(sampleCorrection(ThisBin));
+                                tmp = squeeze(participantAverages{ThisBin}(k,ThisChan,:))';
+                                if sampleCorrection(ThisBin) < 0
+                                    % bring this bin forward in time.
+                                    tmp = [tmp(shft+1:end),zeros(1,shft)];
+                                else % push this bin back in time.
+                                    tmp = [zeros(1,shft), tmp(1:end-shft)];
+                                end
+                                participantAverages{ThisBin}(k,ThisChan,:) = tmp;
+                            end % of bin by bin check
+                        end % sampleCorrection check.
+                    end % of channel by channel loop
+                    
+                    display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);
                 else
-                    display(['Skipping SUB ' SUB{k} ' Bin ' num2str(ThisBin) '. Too few epochs.']);  
+                    display(['Skipping SUB ' SUB{k} ' Bin ' num2str(ThisBin) '. Too few epochs.']);
                 end
             end
         end % of skipping empty data sets
@@ -282,9 +308,9 @@ if ~isempty(binContrast)
     involvedBins = find(binContrast);
     for i = 1:length(involvedBins)
         if i == 1
-            contrastAverages = participantAverages{involvedBins(i)}(:,:,:) .*binContrast(i);
+            contrastAverages = participantAverages{involvedBins(i)}(:,:,:) .*binContrast(involvedBins(i));
         else
-            contrastAverages = contrastAverages + participantAverages{involvedBins(i)}(:,:,:) .*binContrast(i);
+            contrastAverages = contrastAverages + participantAverages{involvedBins(i)}(:,:,:) .*binContrast(involvedBins(i));
         end
     end
     % only one bin now. 
