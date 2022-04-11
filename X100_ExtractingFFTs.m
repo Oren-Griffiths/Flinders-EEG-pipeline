@@ -4,7 +4,7 @@
 
 %% Get the extra details from the user [i.e. change these values.]
 % what's the relevant config file called?
-ConfigFileName = 'Config_CaitlinCharlotte';
+ConfigFileName = 'Sal_Config_256Hz_allPs_wTraining_noPREP_130821';
 
 % 10:20 names of the channels you want. If you select more than one
 % channel, it will average across them (i.e. treat it as a single montage).
@@ -13,14 +13,14 @@ ConfigFileName = 'Config_CaitlinCharlotte';
 keyChans = {'Oz', 'O1', 'O2'};
 
 % choose a time period you want to take the average across. Measured in ms.
-measureWindow = [1000, 8700];
+measureWindow = [0, 80000];
 
 % choose a frequency target (targetHz), and a visualization window 
 % (rangeHz) around that value. 
-targetHz = 13;
+targetHz = 15;
 rangeHz = [2, 20];
 % how do you want to do baselining?
-baselining = 'none'; % or 'none' or 'z' or 'subtract'
+baselining = 'subtract'; % or 'none' or 'z' or 'subtract'
 
 % if a person has less than X clean epochs are AR-rejection, then remove
 % them from the averaging process. Set X. Put empty '[]' to ignore min.
@@ -39,7 +39,7 @@ maskFile = 'none';
 % supported, e.g. [ 1 -0.5 -0.5 0 0 0]. If you just want all bins considered
 % separately, leave it blank. Must be normalized (i.e. sum to 0), ...
 % and ideally abs(sum) = 2 as well.
-binContrast = [-1 0 1 0 0 0 0 0];
+binContrast = [];
 
 % do you want the output figures to show information about peak value and
 % latency (in ERP waveforms) and min/max channel values in the topoplots?
