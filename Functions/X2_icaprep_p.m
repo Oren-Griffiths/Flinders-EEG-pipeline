@@ -47,7 +47,19 @@ clearvars -except DataConfig SUB;
             % ok, but if there are no events consistent with the relevant
             % codes this will crash. So need to check for that too. 
             matchedEvents = 0; % start at 0 and update if a match is found. 
-            eventCodes = struct2cell(rmfield(EEG.event, {'urevent', 'latency'}));
+            % remove the extra fields (if present).
+            tempStruct = EEG.event;
+            if isfield(tempStruct, 'urevent')
+                tempStruct = rmfield(tempStruct, 'urevent');
+            end
+            if isfield(tempStruct, 'latency')
+                tempStruct = rmfield(tempStruct, 'latency');
+            end
+            if isfield(tempStruct, 'duration')
+                tempStruct = rmfield(tempStruct, 'duration');
+            end
+            eventCodes = struct2cell(tempStruct);
+            
             for k = 1:length(DataConfig.RelevantCodes) % loop through codes to check.
                 if isempty(find( [eventCodes{:}] == DataConfig.RelevantCodes{k}  ))
                      % no matches found for this code. Do nothing. 
@@ -55,6 +67,7 @@ clearvars -except DataConfig SUB;
                     matchedEvents = 1; 
                 end
             end
+            
             if matchedEvents == 1
                 EEG  = pop_erplabDeleteTimeSegments( EEG , 'displayEEG', 0, 'endEventcodeBufferMS',  500, 'ignoreUseEventcodes', cell2mat(DataConfig.RelevantCodes), 'ignoreUseType', 'Use', 'startEventcodeBufferMS',  500, 'timeThresholdMS',  2000 );
             else % else just general trimming.

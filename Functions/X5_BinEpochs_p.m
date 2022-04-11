@@ -32,7 +32,8 @@ clearvars -except DataConfig SUB;
         EEG = pop_loadset( 'filename', FileToOpen, 'filepath', Subject_Path);
         [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_PREP_ica_corr_cbip'], 'gui', 'off');
         
-        
+        % this is now performed in step 1b (preICA), but is retained here
+        % in case there's ever a need to bin without precleaning. 
         if size(DataConfig.CustomEpochs) > 0 % custom text epochs to create.
             EventLabels = DataConfig.CustomEpochs;
             DataConfig.CustomEventTriggers = {}; % initialize output cell array.

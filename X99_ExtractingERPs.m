@@ -10,7 +10,7 @@ ConfigFileName = 'WIMR_Config_testing';
 % channel, it will average across them (i.e. treat it as a single montage).
 % If you want to compare different channels/AOIs, run this script more
 % than once with different channels chosen each time.
-keyChans = {'FCz', 'Fz', 'Cz', 'FC1', 'FC2'};
+keyChans = {'FCz', 'Fz', 'Cz', 'FC1', 'FC2', 'C1', 'C2', 'F1', 'F2'};
 
 % what time period (ms) do you want visualized. This will obviously break
 % if you choose an area large than the epoch declared in DataConfig, so
@@ -38,6 +38,20 @@ maskFile = 'none';
 % separately, leave it blank. Must be normalized (i.e. sum to 0), ...
 % and ideally abs(sum) = 2 as well. 
 binContrast = [];
+
+% You can specify an extra lowpass filter that may be needed for terrible
+% data. By default this should be left as 'none', but for messy data
+% you may be forced to filter out HF noise again. You can do the same as
+% what you've done previously (type 'same'). Otherwise choose a value e.g.
+% 40Hz and enter it as a string '40'.
+extraLowPass = 'same';
+
+% you can shift all epochs in a bin either forwards (+ values) or backwards
+% (- values) in time by a integer number of samples (e.g. 4ms at 256hz).
+% You will mostly leave it empty and this will be skipped. But if you enter
+% any values, you have to put one value per bin, e.g. [ 0 0 -10] for 3 bin
+% analysis. 
+sampleCorrection = [0,0,0,0,-8,-8];
 
 % do you want the output figures to show information about peak value and
 % latency (in ERP waveforms) and min/max channel values in the topoplots? 
@@ -105,6 +119,16 @@ for ThisBin = 1:numel(GoodTrials)
     end
 end
 
+% get channel numbers
+% that is, convert channel indices from channel names.
+% have done this assuming that all bins have the same channel location
+% structure, but robust to missing values for some bins. 
+for ThisChan = 1:length(keyChans)
+    keyChanIdx(ThisChan) = find(strcmp({chanlocs.labels}, keyChans{ThisChan})==1);
+    ThisBin = NoOfBins; % skip out of the loop.
+end
+
+
 % and let's get the values from another method too. Makes sure everything
 % aligns.
 LengthOfEpoch_2 = (DataConfig.EpochMax{1} - DataConfig.EpochMin{1})/1000 * ...
@@ -153,6 +177,27 @@ else
         maskVector = [];
     end
 end
+
+% figure out the extra lowpass filter, if required
+if strcmp(class(extraLowPass), 'char')
+    switch extraLowPass
+        case 'none'
+            extraLowPass_num = [];
+            disp('No extra filter applied');
+        case 'same'
+            extraLowPass_num = DataConfig.LPfilter{1};
+            disp(['Extra filter applied: ' num2str(DataConfig.LPfilter{1}) 'Hz' ]);
+        otherwise
+            extraLowPass_num = str2num(extraLowPass);
+            disp(['Extra filter applied: ' extraLowPass 'Hz']);
+    end
+else
+    disp('Error in supplied extra filter. None applied');
+    extraLowPass_num = [];
+end
+% extraLowPass = DataConfig.LPfilter{1}; % 
+
+
 %% loop through SUBS and gather *per participant* averages by averaging across epochs (within bins).
 SUB = DataConfig.SUB;
 for k = 1:length(SUB)
@@ -166,10 +211,10 @@ for k = 1:length(SUB)
     
     % adjust the data according to bin contrasts to streamline the data
     % down to a single (e.g. difference) time series, if that is what's
-    % declared. 
+    % declared.
     
     if isempty(binContrast)
-    % do nothing. leave the input alone.
+        % do nothing. leave the input alone.
     else % possible some bins are missing in some participants. correct for that.
         residual = length(binContrast) - numel(GoodTrials);
         % fill GoodTrials variable in with blank cells if needed.
@@ -178,13 +223,13 @@ for k = 1:length(SUB)
                 display('More bins in data than in binContrast vector. How?');
             else % add some empty bins into the GoodTrials variable.
                 for missingBin = 1:residual
-                GoodTrials(missingBin+numel(GoodTrials)).data = [];
-                GoodTrials(missingBin+numel(GoodTrials)).ID = [];
-                GoodTrials(missingBin+numel(GoodTrials)).chanlocs = GoodTrials(1).chanlocs;
-                GoodTrials(missingBin+numel(GoodTrials)).srate = GoodTrials(1).srate;
+                    GoodTrials(missingBin+numel(GoodTrials)).data = [];
+                    GoodTrials(missingBin+numel(GoodTrials)).ID = [];
+                    GoodTrials(missingBin+numel(GoodTrials)).chanlocs = GoodTrials(1).chanlocs;
+                    GoodTrials(missingBin+numel(GoodTrials)).srate = GoodTrials(1).srate;
                 end
             end
-            % the math/adjustment is done down below. 
+            % the math/adjustment is done down below.
         end
     end
     
@@ -202,12 +247,54 @@ for k = 1:length(SUB)
                     % load the mean per epoch into a global variable.
                     temp = squeeze(nanmean(GoodTrials(ThisBin).data,3));
                     for ThisChan = 1:NoOfChans
-                        % bin = cell. In that: PIDs by chans by samples.
-                        participantAverages{ThisBin}(k,ThisChan,:) =  temp(ThisChan,:);
-                    end
-                    display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);  
+                        if ~isempty(extraLowPass_num)
+                            % particularly noisy data may need an extra
+                            % lowpass filter (if cleanline + BP doesn't
+                            % grab everything)
+                            if k == 1 && ThisBin == 1
+                                % you only need to design the filter on the
+                                % first loop.
+                                [~,dFilter] = lowpass(temp(ThisChan,:),extraLowPass_num, srate);
+                                % and then apply that filter in a
+                                % zero-phase compliant way.
+                                participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));
+                                %
+                                validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
+                                epochCounts{ThisBin}(k) = validEpochs;
+                            else
+                                participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));
+                                %
+                                validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
+                                epochCounts{ThisBin}(k) = validEpochs;
+                            end
+                        else % no additional filters. Just take the data as they are.
+                            participantAverages{ThisBin}(k,ThisChan,:) = temp(ThisChan,:);
+                            validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
+                            epochCounts{ThisBin}(k) = validEpochs;
+                        end
+                        % apply a time correction, if requested.
+                        if ~isempty(sampleCorrection)
+                            % time correction sought...
+                            if sampleCorrection(ThisBin) == 0
+                                % but not during this bin. skip.
+                            else
+                                % yep, need to adjust this paricular bin.
+                                shft = abs(sampleCorrection(ThisBin));
+                                tmp = squeeze(participantAverages{ThisBin}(k,ThisChan,:))';
+                                if sampleCorrection(ThisBin) < 0
+                                    % bring this bin forward in time.
+                                    tmp = [tmp(shft+1:end),zeros(1,shft)];
+                                else % push this bin back in time.
+                                    tmp = [zeros(1,shft), tmp(1:end-shft)];
+                                end
+                                participantAverages{ThisBin}(k,ThisChan,:) = tmp;
+                            end % of bin by bin check
+                        end % sampleCorrection check.
+                    end % of channel by channel loop
+                    
+                    display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);
                 else
-                    display(['Skipping SUB ' SUB{k} ' Bin ' num2str(ThisBin) '. Too few epochs.']);  
+                    display(['Skipping SUB ' SUB{k} ' Bin ' num2str(ThisBin) '. Too few epochs.']);
                 end
             end
         end % of skipping empty data sets
@@ -221,9 +308,9 @@ if ~isempty(binContrast)
     involvedBins = find(binContrast);
     for i = 1:length(involvedBins)
         if i == 1
-            contrastAverages = participantAverages{involvedBins(i)}(:,:,:) .*binContrast(i);
+            contrastAverages = participantAverages{involvedBins(i)}(:,:,:) .*binContrast(involvedBins(i));
         else
-            contrastAverages = contrastAverages + participantAverages{involvedBins(i)}(:,:,:) .*binContrast(i);
+            contrastAverages = contrastAverages + participantAverages{involvedBins(i)}(:,:,:) .*binContrast(involvedBins(i));
         end
     end
     % only one bin now. 
@@ -251,15 +338,6 @@ if ~exist('ERP_GrandAverages', 'dir')
 end
 
 keyPeriod = (times > wholeEpoch(1)/1000 & times < wholeEpoch(2)/1000);
-% get channel numbers
-% that is, convert channel indices from channel names.
-% have done this assuming that all bins have the same channel location
-% structure, but robust to missing values for some bins. 
-
-for ThisChan = 1:length(keyChans)
-    keyChanIdx(ThisChan) = find(strcmp({chanlocs.labels}, keyChans{ThisChan})==1);
-    ThisBin = NoOfBins; % skip out of the loop.
-end
 
 % participantAverages.
 % structure: a n-element cell array (cells are bins). Each bin contains a
@@ -315,11 +393,14 @@ for ThisBin = 1:NoOfBins
     end
     % write that as output.
     writematrix(tempForEval{ThisBin}, processedFilename, 'Sheet', tabname, 'Range','B3');
+    % write the epoch counts
+    writematrix(epochCounts{ThisBin}', processedFilename, 'Sheet', tabname, 'Range','C3');
     % write the row headers
     writecell(DataConfig.SUB', processedFilename, 'Sheet', tabname, 'Range', 'A3');
     writecell({'PID'}, processedFilename, 'Sheet', tabname, 'Range', 'A2');
     % write the column headers
-    writecell({'MeanOfMeasurementWindow'}, processedFilename, 'Sheet', tabname, 'Range','B2');
+    writecell({'MeanVoltage'}, processedFilename, 'Sheet', tabname, 'Range', 'B2');
+    writecell({'NoOfEpochs'}, processedFilename, 'Sheet', tabname, 'Range', 'C2');
 end % of bin by bin loop.
 
 
@@ -446,7 +527,35 @@ for ThisBin = 1:NoOfBins
         exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
         close(gcf);
     end
+end % of cycling through bins.
+
+% draw one more figure that captures all bins using default matlab
+% settings. Good for comparing across bins, but only if there are multiple
+% bins.
+
+if isempty(binContrast) & NoOfBins > 1
+    dataToPlot = zeros(NoOfBins,length(timesToPlot));
+    for ThisBin = 1:NoOfBins
+        dataToPlot(ThisBin,:) = nanmean(tempForOutput{ThisBin},1);
+        BinLbls{ThisBin} = ['Bin ' num2str(ThisBin)];
+    end
+    figure;
+    plot(timesToPlot,dataToPlot);
+    %
+    title('AllBins');
+    legend(BinLbls);
+    xline(0, '-k'); % show time zero
+    ylabel('Voltage(microvolts)');
+    xlabel('Time(s)');
+    y_cap = 2*max(abs(dataToPlot(:)));
+    ylim([-1*y_cap, y_cap]);
+    %
+    f = gcf;
+    f.Units = 'inches';
+    f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
+    fig_filename = ['ERP_GrandAverages' filesep 'AllBinsTogether.png'];
+    disp('Saving all bin waveform');
+    exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
+    close(gcf);
 end
-
-
 

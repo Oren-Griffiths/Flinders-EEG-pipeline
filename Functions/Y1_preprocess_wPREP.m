@@ -39,10 +39,10 @@ SUB = DataConfig.SUB;
         
         if isempty(DataConfig.LastProcess)
             % this is the first process for this file, so open the raw data.
-            if exist([Subject_Path  SUB{i} '_raw.set']) == 2
+            if exist([Subject_Path  SUB{i} '_ds.set']) == 2
                 % you've already imported this data set so just start
                 % there.
-                EEG = pop_loadset( 'filename',[SUB{i} '_raw.set'], 'filepath', Subject_Path);
+                EEG = pop_loadset( 'filename',[SUB{i} '_ds.set'], 'filepath', Subject_Path);
             else
                 switch DataConfig.RawFileType{1}
                     case '.bdf'
