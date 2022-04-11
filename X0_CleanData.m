@@ -2,10 +2,10 @@
 global DataConfig
 
 % which experiment are we going to run?
-ConfigFileName = 'WIMR_Config_testing';
+ConfigFileName = 'Config_CaitlinCharlotte';
 
 % what do we need to do?
-ModeToPerform = 'PreICA';
+ModeToPerform = 'PostICA';
 % 'PreICA' = preICA preparations, including decomposition and plot ICA
 % 'PostICA' = remove ICA components, epoch and baseline
 
@@ -60,7 +60,7 @@ switch DataConfig.mode
         %% do the preprocessing via PREP pipeline (or equivalent if PREP is
         % excluded). Also, can't do this parallel, as PREP calls up a
         % multithread loop, and those can't be nested.
-        Y1_preprocess_wPREP;
+        % Y1_preprocess_wPREP;
         
         %% prepare for next step (can't update DataConfig in parallel).
         DataConfig.LastProcess = cellstr('X1_PreProcess');
@@ -76,16 +76,13 @@ switch DataConfig.mode
         
         %% prepare for next step (can't update DataConfig in parallel).
         DataConfig.LastProcess = cellstr('X1b_fixEvents');
-        if isempty(DataConfig.EventsToAdjust)
-            DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
-        else
-            DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event.set');
-        end
+        DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event.set');
+
         
         %% do the ICA prep
         tmpDataConfig = DataConfig;
         totalSUBS = length(tmpDataConfig.SUB);
-        parfor loopIdx = 1:totalSUBS
+        for loopIdx = 1:totalSUBS
             SUB =  tmpDataConfig.SUB(loopIdx);
             X2_icaprep_p(tmpDataConfig, SUB);
         end
@@ -146,7 +143,7 @@ switch DataConfig.mode
         %% artifact rejection (according to config file).
         tmpDataConfig = DataConfig;
         totalSUBS = length(tmpDataConfig.SUB);
-        parfor loopIdx = 1:totalSUBS
+        for loopIdx = 1:totalSUBS
             SUB =  tmpDataConfig.SUB(loopIdx);
             imageType = 'png'; % or 'pdf' but this fails in parallel mode because it demands too much memory.
             X6_ArtifactRejection_p(tmpDataConfig, SUB, imageType);

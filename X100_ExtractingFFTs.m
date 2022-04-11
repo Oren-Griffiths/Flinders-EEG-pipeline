@@ -4,27 +4,27 @@
 
 %% Get the extra details from the user [i.e. change these values.]
 % what's the relevant config file called?
-ConfigFileName = 'WIMR_Config_testing';
+ConfigFileName = 'Config_CaitlinCharlotte';
 
 % 10:20 names of the channels you want. If you select more than one
 % channel, it will average across them (i.e. treat it as a single montage).
 % If you want to compare different channels/AOIs, run this script more
 % than once with different channels chosen each time.
-keyChans = {'FCz', 'Fz', 'Cz', 'FC1', 'FC2'};
+keyChans = {'Oz', 'O1', 'O2'};
 
 % choose a time period you want to take the average across. Measured in ms.
-measureWindow = [-1000, 1000];
+measureWindow = [1000, 8700];
 
 % choose a frequency target (targetHz), and a visualization window 
 % (rangeHz) around that value. 
-targetHz = 15;
-rangeHz = [3, 40];
+targetHz = 13;
+rangeHz = [2, 20];
 % how do you want to do baselining?
-baselining = 'none'; % or 'none' or 'z'
+baselining = 'none'; % or 'none' or 'z' or 'subtract'
 
 % if a person has less than X clean epochs are AR-rejection, then remove
 % them from the averaging process. Set X. Put empty '[]' to ignore min.
-minEpochs = 10;
+minEpochs = 1;
 
 % include the option of generating a "mask" file which has an 1/0 entry for
 % every subject: 1s being included in the grand average analysis and 0s
@@ -39,7 +39,7 @@ maskFile = 'none';
 % supported, e.g. [ 1 -0.5 -0.5 0 0 0]. If you just want all bins considered
 % separately, leave it blank. Must be normalized (i.e. sum to 0), ...
 % and ideally abs(sum) = 2 as well.
-binContrast = [];
+binContrast = [-1 0 1 0 0 0 0 0];
 
 % do you want the output figures to show information about peak value and
 % latency (in ERP waveforms) and min/max channel values in the topoplots?
@@ -310,7 +310,15 @@ for ThisBin = 1:NoOfBins
     % pool the channels (if you have a multi channel montage).
     temp = squeeze(nanmean(participantAverages{ThisBin}(:,keyChanIdx,:),2));
     % now in PID by samples (freqs) format.
-    tempForOutput{ThisBin} = temp;
+    % dimensionality is wrong if only one participants submitted. So fix it
+    % here.
+    if length(SUB) == 1
+        % then transpose
+        tempForOutput{ThisBin} = temp';
+    else %do the sensible thing.
+        tempForOutput{ThisBin} = temp;
+    end
+    
 end
 
 % save that raw data (i.e. tempForOutput)
