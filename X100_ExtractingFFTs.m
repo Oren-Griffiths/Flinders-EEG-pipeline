@@ -4,7 +4,7 @@
 
 %% Get the extra details from the user [i.e. change these values.]
 % what's the relevant config file called?
-ConfigFileName = 'Sal_Config_256Hz_allPs_wTraining_noPREP_130821';
+ConfigFileName = 'Sal_Config_Study4_noPREP_290422';
 
 % 10:20 names of the channels you want. If you select more than one
 % channel, it will average across them (i.e. treat it as a single montage).
@@ -13,7 +13,7 @@ ConfigFileName = 'Sal_Config_256Hz_allPs_wTraining_noPREP_130821';
 keyChans = {'Oz', 'O1', 'O2'};
 
 % choose a time period you want to take the average across. Measured in ms.
-measureWindow = [0, 80000];
+measureWindow = [0, 78000];
 
 % choose a frequency target (targetHz), and a visualization window 
 % (rangeHz) around that value. 
@@ -214,7 +214,7 @@ for k = 1:length(SUB)
                 % do nothing, this entry is already all NaNs
                 display(['Skipping SUB ' SUB{k} ' Bin ' num2str(ThisBin) '. No data.']);
             else
-                if isempty(minEpochs) || size(GoodTrials(ThisBin).data,3) > minEpochs
+                if isempty(minEpochs) || size(GoodTrials(ThisBin).data,3) >= minEpochs
                     
                     % just use the scalp channels for this analysis.
                     for ThisChan = 1:NoOfChans
@@ -394,7 +394,9 @@ for ThisBin = 1:NoOfBins
     ylabel('Spectral power density(uV^2/Hz)');
     xlabel('Hz');
     y_cap = 2*max(abs(FreqsToPlot));
-    ylim([-1*y_cap, y_cap]);
+    if ~isnan(y_cap)
+        ylim([-1*y_cap, y_cap]);
+    end
     % change some values and save.
     f = gcf;
     f.Units = 'inches';
