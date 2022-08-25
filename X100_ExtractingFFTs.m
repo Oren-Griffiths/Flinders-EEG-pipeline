@@ -4,7 +4,7 @@
 
 %% Get the extra details from the user [i.e. change these values.]
 % what's the relevant config file called?
-ConfigFileName = 'Config_CaitlinCharlotte';
+ConfigFileName = 'Config_Natalie_160622';
 
 % 10:20 names of the channels you want. If you select more than one
 % channel, it will average across them (i.e. treat it as a single montage).
@@ -13,14 +13,17 @@ ConfigFileName = 'Config_CaitlinCharlotte';
 keyChans = {'Oz', 'O1', 'O2'};
 
 % choose a time period you want to take the average across. Measured in ms.
-measureWindow = [1000, 8700];
+measureWindow = [0, 14000];
 
 % choose a frequency target (targetHz), and a visualization window 
 % (rangeHz) around that value. 
-targetHz = 13;
-rangeHz = [2, 20];
+targetHz = 20;   %Natalie: possible values are: 17.1428; 20; 15; 24
+rangeHz = [12, 26];
 % how do you want to do baselining?
-baselining = 'none'; % or 'none' or 'z' or 'subtract'
+baselining = 'none'; % or 'none' or 'Zscore' or 'subtract' or 'SNR'
+DVunit = 'power'; % 'power' or 'amplitude' (changes unit output of FFT)
+% SNR correction requires 'power' as the unit (Zscore/subtract doesn't
+% matter).See function "applyFFTbaselines" for further detail. 
 
 % if a person has less than X clean epochs are AR-rejection, then remove
 % them from the averaging process. Set X. Put empty '[]' to ignore min.
@@ -39,7 +42,7 @@ maskFile = 'none';
 % supported, e.g. [ 1 -0.5 -0.5 0 0 0]. If you just want all bins considered
 % separately, leave it blank. Must be normalized (i.e. sum to 0), ...
 % and ideally abs(sum) = 2 as well.
-binContrast = [-1 0 1 0 0 0 0 0];
+binContrast = [];
 
 % do you want the output figures to show information about peak value and
 % latency (in ERP waveforms) and min/max channel values in the topoplots?
@@ -47,11 +50,15 @@ binContrast = [-1 0 1 0 0 0 0 0];
 showPeakInfo = 1;
 % do you want to add a fine overlay of each individual to the grand average
 % waveforms (e.g. to check for presence of outliers)? If so, set to 1.
-showIndividualTraces = 1;
+showIndividualTraces = 0;
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample
 % data per person, averaged values per participant during the measurement
 % window. Places output in current folder. File is 'ERP_output.mat'
+
+% colour limits in topo plots
+% set as empty if you want it to be auto generated.
+customMaxVal = [];
 
 %% open the config file to grab rest of the relevant info.
 % let's loop through all relevant files and draw the ERG1 figures.
@@ -172,6 +179,7 @@ end
 
 %% loop through SUBS and gather *per participant* averages by averaging across epochs (within bins).
 SUB = DataConfig.SUB;
+
 for k = 1:length(SUB)
     
     % just working space to check how data is binned in X7 code.
@@ -214,7 +222,7 @@ for k = 1:length(SUB)
                 % do nothing, this entry is already all NaNs
                 display(['Skipping SUB ' SUB{k} ' Bin ' num2str(ThisBin) '. No data.']);
             else
-                if isempty(minEpochs) || size(GoodTrials(ThisBin).data,3) > minEpochs
+                if isempty(minEpochs) || size(GoodTrials(ThisBin).data,3) >= minEpochs
                     
                     % just use the scalp channels for this analysis.
                     for ThisChan = 1:NoOfChans
@@ -225,16 +233,19 @@ for k = 1:length(SUB)
                         NoOfEpochs = size(GoodTrials(ThisBin).data,3);
                         FFT_placeholder = NaN(NoOfEpochs,FFT_length);
                         for ThisEpoch = 1:NoOfEpochs
-                            switch baselining
-                                case 'subtract'
+                            if strcmp(DVunit, 'power')
+                                FFT_placeholder(ThisEpoch,:) = ...
+                                    applyFFTbaselines(PowerFFT(GoodTrials(ThisBin).data(ThisChan,measurePeriod,ThisEpoch)), ...
+                                    baselining, 10, 0, 1)'; % halfwidth = 10, 0 max val exclusions, 1 nearest neighbour.
+                            elseif strcmp(DVunit,'amplitude')
+                                if strcmp(baselining, 'SNR')
+                                    disp('Error: Requesting SNR correction on amplitudes, not power.');
+                                    return 
+                                else
                                     FFT_placeholder(ThisEpoch,:) = ...
-                                        applyFFTbaseline(SimpleFFT(GoodTrials(ThisBin).data(ThisChan,measurePeriod,ThisEpoch)))';
-                                case 'z'
-                                    FFT_placeholder(ThisEpoch,:) = ...
-                                        applyFFTbaselineZ(SimpleFFT(GoodTrials(ThisBin).data(ThisChan,measurePeriod,ThisEpoch)))';
-                                case 'none'
-                                    FFT_placeholder(ThisEpoch,:) = ...
-                                        SimpleFFT(GoodTrials(ThisBin).data(ThisChan,measurePeriod,ThisEpoch));
+                                        applyFFTbaselines(simpleFFT(GoodTrials(ThisBin).data(ThisChan,measurePeriod,ThisEpoch)), ...
+                                        baselining, 10, 0, 1)'; % halfwidth = 10, 0 max val exclusions, 1 nearest neighbour.
+                                end
                             end
                         end % of epoch by epoch loop.
                         % structure of data per bin: PIDs by chans by samples.
@@ -248,6 +259,10 @@ end % of subject by subject loop
 
 % sanity check to make sure it's outputting approriate spectral values.
 % plot(HzBins,nanmean(FFT_placeholder));
+
+%% output and save the key variable we've just constructed
+save('participantAverages.mat', 'participantAverages');
+
 
 %% correct or adjust the data, if necessary
 % will do the bin contrast below when dimensionality reduced.
@@ -314,7 +329,7 @@ for ThisBin = 1:NoOfBins
     % here.
     if length(SUB) == 1
         % then transpose
-        tempForOutput{ThisBin} = temp';
+        tempForOutput{ThisBin} = temp;
     else %do the sensible thing.
         tempForOutput{ThisBin} = temp;
     end
@@ -393,7 +408,18 @@ for ThisBin = 1:NoOfBins
     end
     ylabel('Spectral power density(uV^2/Hz)');
     xlabel('Hz');
-    y_cap = 2*max(abs(FreqsToPlot));
+    
+    % figure out the y range, or just use inputted value.
+    if isempty(customMaxVal)
+        y_cap = 2*max(abs(FreqsToPlot));
+        % enforce lower value in case of e.g. all NaNs
+        if y_cap < 0.000001
+            y_cap = 0.000001;
+        end
+    else
+        y_cap = customMaxVal;
+    end
+    
     ylim([-1*y_cap, y_cap]);
     % change some values and save.
     f = gcf;
@@ -444,6 +470,18 @@ for ThisBin = 1:NoOfBins
                 num2str(targetHz_actual) 'Hz'];
         end
         title(titleText);
+        
+        % figure out the colour range, or just use inputted value.
+        if isempty(customMaxVal)
+             colourCap = 1.5*max(abs(dataToPlot));
+            % enforce lower value in case of e.g. all NaNs
+            if colourCap < 0.000001
+                colourCap = 0.000001;
+            end
+        else
+           colourCap = customMaxVal;
+        end
+
         colourCap = 1.5*max(abs(dataToPlot));
         caxis([-1*colourCap, colourCap]);
         if showPeakInfo == 1
