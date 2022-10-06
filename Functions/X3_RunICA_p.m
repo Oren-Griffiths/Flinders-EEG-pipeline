@@ -49,13 +49,20 @@ clearvars -except DataConfig SUB;
         EEG = pop_loadset( 'filename', FileToOpen, 'filepath', Subject_Path);
         [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event_icaPrep2'], 'gui', 'off');
         
-        %Compute ICA weights with runICA (only easy option for Windows under
-        %EEGlab), and it will choose others if available anyway.  
-        ChansForICA = [DataConfig.firstScalp:DataConfig.lastScalp, ...
+        % Compute ICA weights with runICA.
+        % Try to include reference channels, so if mastoid referenced, then
+        % add them to the ICA. (if not, exclude all non-scalp). 
+        if strcmp(DataConfig.ReReference{1}, 'Mastoid') 
+                    ChansForICA = [DataConfig.firstScalp:DataConfig.lastScalp, ...
             DataConfig.KeyChans{3}, DataConfig.KeyChans{4}]; 
+        else 
+            % no need to include mastoids if they aren't used for referencing
+            ChansForICA = [DataConfig.firstScalp:DataConfig.lastScalp];
+        end
+
         % runica can sometimes miscalculate rank and screw up. So make it
         % guess the rank, and force that rank onto the calculation using
-        % 'pca' key value pair to avoid "ghost" (complex) components.
+        % 'pca' key value pair to avoid complex components that break things.
         EffectiveRank = rank(EEG.data(ChansForICA,:));
         
         EEG = pop_runica(EEG,'extended',1,'chanind', ChansForICA, 'pca',EffectiveRank);
