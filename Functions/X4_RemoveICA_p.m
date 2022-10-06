@@ -37,7 +37,7 @@ clearvars -except DataConfig SUB;
         % grab the adjusted VEOG (Fp1) data for output figure
         rawVEOG = EEG.data(DataConfig.Fp1,:);
         
-        if isfield(EEG.etc, 'ic_classification')
+        if isfield(EEG.etc, 'ic_classification') && strcmp(DataConfig.mode, 'AutoICA')
             % this field will only exist if ICLabel has been applied. 
             % Parameters and workflow taken from Makato's blog.
             % https://sccn.ucsd.edu/wiki/Makoto's_preprocessing_pipeline#High-pass_filter_the_data_at_1-Hz_.28for_ICA.2C_ASR.2C_and_CleanLine.29.2805.2F18.2F2022_updated.29

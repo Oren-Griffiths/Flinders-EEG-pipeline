@@ -85,9 +85,9 @@ clearvars -except DataConfig SUB;
         % new, an automated ICA removal using ICLabel plug in.
         % Using ICLabel output is more about removing components.
         % So it is placed in  process X4 instead.
-        if strcmp(DataConfig.Mode,'AutoICA')
-            EEG = iclabel(EEG, 'default');
-        end
+
+        EEG = iclabel(EEG, 'default');
+
         % save the newly complete file to disk.
         EEG = pop_saveset( EEG, 'filename', [SUB{i} '_ds_addChans_PREP_bp_refs_event_icaWeighted.set'],'filepath', Subject_Path);
 
