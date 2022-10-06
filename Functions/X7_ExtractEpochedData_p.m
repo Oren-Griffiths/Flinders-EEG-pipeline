@@ -8,11 +8,11 @@
 % plots channel Cz or, if specified in ConfigFile, will plot the channel
 % chose in DataConfig.KeyChannel{1}.
 
-function X7_ExtractEpochedData_p(DataConfig,SUB)
+function X7_ExtractEpochedData_p(DataConfig,SUB, imageType)
 
 % initialize
 close all;
-clearvars -except DataConfig SUB;
+clearvars -except DataConfig SUB imageType;
 
 % Location of the main study directory
 DIR = fileparts(pwd);
@@ -90,8 +90,15 @@ for i = 1:length(SUB)
             disp(['Parsing bin number ' num2str(ThisBin)]);
             % find artefact-free bins that I want to scoop up.
             epochsToTake = GoodEpochBins == ThisBin;
+            if sum(EpochBins == ThisBin) > 0
+                rejRate = 1 - (sum(GoodEpochBins == ThisBin)/ ...
+                    sum(EpochBins == ThisBin));
+            else
+                rejRate = 0;
+            end
             % then scoop them up.
             GoodTrials(ThisBin).data = double(TotalGoodTrials(:,:,epochsToTake));
+            GoodTrials(ThisBin).rejRate = rejRate;
             GoodTrials(ThisBin).ID = ThisBin;
             GoodTrials(ThisBin).chanlocs = EEG.chanlocs;
             GoodTrials(ThisBin).srate = EEG.srate;
@@ -100,6 +107,7 @@ for i = 1:length(SUB)
         for idx = 1:length(EpochBins)
             ThisBin = EpochBins(idx);
             GoodTrials(ThisBin).data = [];
+            GoodTrials(ThisBin).rejRate = 1;
             GoodTrials(ThisBin).ID = ThisBin;
             GoodTrials(ThisBin).chanlocs = EEG.chanlocs;
             GoodTrials(ThisBin).srate = EEG.srate;
@@ -115,106 +123,111 @@ for i = 1:length(SUB)
     saveDestination = [Subject_Path  SUB{i} '_ARcorrectedBins.mat'];
     save(saveDestination, 'GoodTrials');
     
-    % draw one figure with a grand average of Fz, Cz, Pz of the good bins.
-    figure;
-    
-    NoOfBins = numel(GoodTrials);
-    if NoOfBins == 0
-        % don't draw an average figure.
+    if strcmp(imageType, 'none')
+        % don't draw any images. Just save output data in .mat format. 
     else
-        labels = {'Fz', 'Cz', 'Pz'};
-        means = [];
-        for ThisBin = 1:NoOfBins
-            if ~isempty(GoodTrials(ThisBin).data)
-                % calculate grand mean of Fz, Cz, Pz. Draw a picture.
-                switch DataConfig.TotalChannels{1}
-                    case 32
-                        Chans = [31, 32, 13];
-                        LineDetails = {'-r', '-b', '-g'};
-                    case 64
-                        Chans = [38, 48, 31];
-                        LineDetails = {'-r', '-b', '-g'};
-                end
-                
-                % start drawing.
-                for idx = 1:length(Chans)
-                    ThisChan = Chans(idx);
-                    times = EEG.times;
-                    means(idx,:) = mean(GoodTrials(ThisBin).data(ThisChan,:,:),3);
-                    subplot( round(sqrt(NoOfBins))+1, round(sqrt(NoOfBins))+1, ThisBin);
-                end
-                for idx = 1:length(Chans)
-                    hold on
-                    plot(times,means(idx,:),LineDetails{idx});
-                    hold off
-                end
-                legend(labels);
-                title(num2str(ThisBin));
-                set(gca,'FontSize',18);
-                
-            end % of skipped empty bins
-        end % of bin by bin loop
-        set(gcf,'PaperPositionMode','manual','PaperUnits','Inches','PaperSize',[25 25], 'PaperPosition', [0 0 25 25] );
-        out_filename = [Subject_Path 'Figures\X7_',SUB{i} , '_BinGrandMeans.pdf'];
-        saveas(gcf,out_filename,'pdf');
-        close(gcf);
-    end
-    
-    % draw a second set of figures for each trial at "KeyChannel" overlaid
-    % on each other (to get a sense of noise in data set for that bins).
-    NoOfBins = numel(GoodTrials);
-    if NoOfBins > 0
-        % need to make sure that one "key" channel is specified.
-        if isfield(DataConfig, 'KeyChannel')
-            % no need to declare KeyChannel as it's already
-            % specified.
-            KeyChannel = DataConfig.KeyChannel{1};
+        
+        % draw one figure with a grand average of Fz, Cz, Pz of the good bins.
+        figure;
+        
+        NoOfBins = numel(GoodTrials);
+        if NoOfBins == 0
+            % don't draw an average figure.
         else
-            % older versions of "MasterFile" may not declare KeyChannel config.
-            % so just use Cz for them.
-            switch DataConfig.TotalChannels{1}
-                case 32
-                    KeyChannel = 32;
-                case 64
-                    KeyChannel = 48;
-            end
+            labels = {'Fz', 'Cz', 'Pz'};
+            means = [];
+            for ThisBin = 1:NoOfBins
+                if ~isempty(GoodTrials(ThisBin).data)
+                    % calculate grand mean of Fz, Cz, Pz. Draw a picture.
+                    switch DataConfig.TotalChannels{1}
+                        case 32
+                            Chans = [31, 32, 13];
+                            LineDetails = {'-r', '-b', '-g'};
+                        case 64
+                            Chans = [38, 48, 31];
+                            LineDetails = {'-r', '-b', '-g'};
+                    end
+                    
+                    % start drawing.
+                    for idx = 1:length(Chans)
+                        ThisChan = Chans(idx);
+                        times = EEG.times;
+                        means(idx,:) = mean(GoodTrials(ThisBin).data(ThisChan,:,:),3);
+                        subplot( round(sqrt(NoOfBins))+1, round(sqrt(NoOfBins))+1, ThisBin);
+                    end
+                    for idx = 1:length(Chans)
+                        hold on
+                        plot(times,means(idx,:),LineDetails{idx});
+                        hold off
+                    end
+                    legend(labels);
+                    title(num2str(ThisBin));
+                    set(gca,'FontSize',18);
+                    
+                end % of skipped empty bins
+            end % of bin by bin loop
+            set(gcf,'PaperPositionMode','manual','PaperUnits','Inches','PaperSize',[25 25], 'PaperPosition', [0 0 25 25] );
+            out_filename = [Subject_Path 'Figures\X7_',SUB{i} , '_BinGrandMeans.pdf'];
+            saveas(gcf,out_filename,'pdf');
+            close(gcf);
         end
         
-        % loop through bins and draw a figure per bin.
-        for ThisBin = 1:NoOfBins
-            if ~isempty(GoodTrials(ThisBin).data)
-                % loop through every epoch at assigned channel.
-                figure;
-                % find x axis
-                times = EEG.times;
-                % grab the right bin.
-                dataToPlot = GoodTrials(ThisBin).data;
-                % squeeze down to epochs by samples.
-                if size(size(dataToPlot))< 3
-                    % only one epoch retained, so no "epochs" dimension.
-                    dataToPlot = dataToPlot(KeyChannel,:);
-                else % else index key channel to get samples by epochs.
-                    dataToPlot = squeeze(dataToPlot(KeyChannel,:,:))';
+        % draw a second set of figures for each trial at "KeyChannel" overlaid
+        % on each other (to get a sense of noise in data set for that bins).
+        NoOfBins = numel(GoodTrials);
+        if NoOfBins > 0
+            % need to make sure that one "key" channel is specified.
+            if isfield(DataConfig, 'KeyChannel')
+                % no need to declare KeyChannel as it's already
+                % specified.
+                KeyChannel = DataConfig.KeyChannel{1};
+            else
+                % older versions of "MasterFile" may not declare KeyChannel config.
+                % so just use Cz for them.
+                switch DataConfig.TotalChannels{1}
+                    case 32
+                        KeyChannel = 32;
+                    case 64
+                        KeyChannel = 48;
                 end
-                % start drawing.
-                hold on
-                for k = 1:size(dataToPlot,1)
-                    plot(times,dataToPlot(k,:),'-b');
-                end
-                % and overlay the mean.
-                plot(times, mean(dataToPlot), 'Color', 'r', 'LineWidth', 3 );
-                hold off
-                title(num2str(ThisBin));
-                set(gca,'FontSize',18);
-                
-                % and save it as it's own file.
-                set(gcf,'PaperPositionMode','manual','PaperUnits','Inches','PaperSize',[25 25], 'PaperPosition', [0 0 25 25] );
-                out_filename = [Subject_Path 'Figures\X7_PID_', SUB{i} , '_Bin_' num2str(GoodTrials(ThisBin).ID) '_RawData.png'];
-                saveas(gcf,out_filename);
-                close(gcf);
-                
-            end % of skipped empty bins
-        end % of bin-by-bin loop.
+            end
+            
+            % loop through bins and draw a figure per bin.
+            for ThisBin = 1:NoOfBins
+                if ~isempty(GoodTrials(ThisBin).data)
+                    % loop through every epoch at assigned channel.
+                    figure;
+                    % find x axis
+                    times = EEG.times;
+                    % grab the right bin.
+                    dataToPlot = GoodTrials(ThisBin).data;
+                    % squeeze down to epochs by samples.
+                    if size(size(dataToPlot))< 3
+                        % only one epoch retained, so no "epochs" dimension.
+                        dataToPlot = dataToPlot(KeyChannel,:);
+                    else % else index key channel to get samples by epochs.
+                        dataToPlot = squeeze(dataToPlot(KeyChannel,:,:))';
+                    end
+                    % start drawing.
+                    hold on
+                    for k = 1:size(dataToPlot,1)
+                        plot(times,dataToPlot(k,:),'-b');
+                    end
+                    % and overlay the mean.
+                    plot(times, mean(dataToPlot), 'Color', 'r', 'LineWidth', 3 );
+                    hold off
+                    title(num2str(ThisBin));
+                    set(gca,'FontSize',18);
+                    
+                    % and save it as it's own file.
+                    set(gcf,'PaperPositionMode','manual','PaperUnits','Inches','PaperSize',[25 25], 'PaperPosition', [0 0 25 25] );
+                    out_filename = [Subject_Path 'Figures\X7_PID_', SUB{i} , '_Bin_' num2str(GoodTrials(ThisBin).ID) '_RawData.png'];
+                    saveas(gcf,out_filename);
+                    close(gcf);
+                    
+                end % of skipped empty bins
+            end % of bin-by-bin loop.
+        end % of image skipping if 'none' selected
     end % of skipped if no data at all.
     
     

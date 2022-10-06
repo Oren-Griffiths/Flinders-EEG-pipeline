@@ -23,7 +23,7 @@ switch ModeToPerform
 end
 
 %% You can manually enter a function sequence here too. 
-% FunctionsToRun = [6 7 8 9];
+% FunctionsToRun = [];
 %%
 
 ResetICAcomponents = 1;
@@ -199,7 +199,9 @@ if ismember(9, FunctionsToRun)
     totalSUBS = length(tmpDataConfig.SUB);
     for loopIdx = 1:totalSUBS
         SUB =  tmpDataConfig.SUB(loopIdx);
-        X7_ExtractEpochedData_p(tmpDataConfig, SUB);
+        imageType = 'none'; % you can select 'none' and will draw no images. 
+        % if you want images, put 'png' here.
+        X7_ExtractEpochedData_p(tmpDataConfig, SUB, imageType);
     end
 end
 
