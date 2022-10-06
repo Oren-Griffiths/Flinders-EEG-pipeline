@@ -94,7 +94,7 @@ if ismember(2,FunctionsToRun)
     %% adjust events so they're on the correct timeline.
     tmpDataConfig = DataConfig;
     totalSUBS = length(tmpDataConfig.SUB);
-    for loopIdx = 1:totalSUBS
+    parfor loopIdx = 1:totalSUBS
         SUB =  tmpDataConfig.SUB(loopIdx);
         X1b_fixEvents_p(tmpDataConfig, SUB);
     end
@@ -108,7 +108,7 @@ if ismember(3,FunctionsToRun)
     %% do the ICA prep
     tmpDataConfig = DataConfig;
     totalSUBS = length(tmpDataConfig.SUB);
-    for loopIdx = 1:totalSUBS
+    parfor loopIdx = 1:totalSUBS
         SUB =  tmpDataConfig.SUB(loopIdx);
         X2_icaprep_p(tmpDataConfig, SUB);
     end
@@ -179,7 +179,7 @@ if ismember(8, FunctionsToRun)
     %% artifact rejection (according to config file).
     tmpDataConfig = DataConfig;
     totalSUBS = length(tmpDataConfig.SUB);
-    for loopIdx = 1:totalSUBS
+    parfor loopIdx = 1:totalSUBS
         SUB =  tmpDataConfig.SUB(loopIdx);
         imageType = 'none'; 
         % or 'pdf' but this fails in parallel mode because it demands too much memory.
@@ -197,7 +197,7 @@ if ismember(9, FunctionsToRun)
     %% and may as well extract the data here too.
     tmpDataConfig = DataConfig;
     totalSUBS = length(tmpDataConfig.SUB);
-    for loopIdx = 1:totalSUBS
+    parfor loopIdx = 1:totalSUBS
         SUB =  tmpDataConfig.SUB(loopIdx);
         imageType = 'none'; % you can select 'none' and will draw no images. 
         % if you want images, put 'png' here.
