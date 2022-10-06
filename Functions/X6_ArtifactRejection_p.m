@@ -78,8 +78,9 @@ clearvars -except DataConfig SUB imageType;
             end
             
             EEG  = pop_artmwppth( EEG , 'Channel',  Channel, 'Flag', [1 4], 'Threshold', Threshold, 'Twindow', [TimeWindowMinimum  TimeWindowMaximum], 'Windowsize', WindowSize, 'Windowstep', WindowStep );
-            [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 4, 'setname', [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar'],...
-                   'savenew', [Subject_Path filesep SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set'], 'gui', 'off');
+            pop_saveset(EEG, 'filename', [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar'], 'filepath', Subject_Path); 
+%             [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 4, 'setname', [SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar'],...
+%                    'savenew', [Subject_Path filesep SUB{i} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set'], 'gui', 'off');
         end % checking whether to apply blink filter.
         
         %% plot the number of trials rejected, which channels, etc.
@@ -88,8 +89,10 @@ clearvars -except DataConfig SUB imageType;
         chanlocs = EEG.chanlocs(DataConfig.firstScalp:DataConfig.lastScalp);
         SVT = ThresholdMaximum;
         % Subject_Path = [fileparts(pwd) '\102\'];
-        DrawARfigs(data,SVT,chanlocs, Subject_Path, imageType);
-        
+        if strcmp(imageType,'none')
+        else
+            DrawARfigs(data,SVT,chanlocs, Subject_Path, imageType);
+        end
        
     end   %End subject loop
 

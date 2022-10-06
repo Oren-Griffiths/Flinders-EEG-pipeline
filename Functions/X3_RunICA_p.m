@@ -18,7 +18,7 @@
 
 % To use this script, select all and use the shortcut Ctrl-T for PC or Command-T for Mac to uncomment the code.
 
-function X3_RunICA_p(DataConfig,SUB)
+function X3_AutoRunTheICA_p(DataConfig,SUB)
 
 % initialize
 close all;
@@ -73,6 +73,12 @@ clearvars -except DataConfig SUB;
         ALLEEG(CURRENTSET).chaninfo.icachansind = ALLEEG(2).chaninfo.icachansind;
         % make sure current EEG is populated with this new info
         EEG = ALLEEG(CURRENTSET);
+        
+        % new, an automated ICA removal using ICLabel plug in.
+        % Using ICLabel output is more about removing components.
+        % So it is placed in  process X4 instead.
+        EEG = iclabel(EEG, 'default');
+        
         % save the newly complete file to disk.
         EEG = pop_saveset( EEG, 'filename', [SUB{i} '_ds_addChans_PREP_bp_refs_event_icaWeighted.set'],'filepath', Subject_Path);
 

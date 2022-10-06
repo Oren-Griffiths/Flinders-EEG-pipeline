@@ -12,7 +12,6 @@ clearvars -except DataConfig SUB;
     % location of preprocessing files.
     Current_File_Path = pwd;
     
-    
     %Loop through each subject listed in SUB
     for i = 1:length(SUB)
         
@@ -29,10 +28,18 @@ clearvars -except DataConfig SUB;
         FileToOpen = [SUB{i} DataConfig.LastSuffix{1}];
         EEG = pop_loadset( 'filename', FileToOpen, 'filepath', Subject_Path);
         [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event_icaWeighted'], 'gui', 'off');
-        
-        figure
+
+        figure;
         pop_topoplot(EEG, 0, [1:size(EEG.icaweights,1)],[SUB{i} '_ds_addChans_PREP_bp_refs_event_icaWeighted'], [round(sqrt(size(EEG.icaweights,1)))+1 round(sqrt(size(EEG.icaweights,1)))+1] ,0,'electrodes','on');
-        save2pdf([Subject_Path filesep 'Figures' filesep 'X3b_' SUB{i} '_ICA_Weights.pdf']);
+        % add some info about which components the algorith wants out/in.
+        % (if available). 
+        if isfield(EEG.etc, 'ic_classification')
+            eyeIdx = find(EEG.etc.ic_classification.ICLabel.classifications(:,3) >= 0.5);
+            componentsText = ['X3b_Eyes_' num2str(eyeIdx') '_SUB_' SUB{i} '_ICA_Weights.pdf'];
+        else
+            componentsText =  ['X3b_SUB_' SUB{i} '_ICA_Weights.pdf'];
+        end
+        save2pdf([Subject_Path filesep 'Figures' filesep componentsText]);
         close all
         
     end % End subject loop

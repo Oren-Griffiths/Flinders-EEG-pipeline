@@ -41,43 +41,45 @@ clearvars -except DataConfig SUB;
         EEG = pop_loadset( 'filename', FileToOpen, 'filepath', Subject_Path);
         [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs_event'], 'gui', 'off');
         czPreClean = EEG.data(DataConfig.cz_chan, :); % grab dirty data for later plotting.
+% Turned off for Natalie's data as there are long periods during the trial
+% in which events do not occur (and we want these in ICA). 
         
-        %Remove segments of EEG during the break periods in between trial blocks (defined as 5 seconds or longer in between successive stimulus event codes)
-        if ~isempty(DataConfig.RelevantCodes)
-            % ok, but if there are no events consistent with the relevant
-            % codes this will crash. So need to check for that too. 
-            matchedEvents = 0; % start at 0 and update if a match is found. 
-            % remove the extra fields (if present).
-            tempStruct = EEG.event;
-            if isfield(tempStruct, 'urevent')
-                tempStruct = rmfield(tempStruct, 'urevent');
-            end
-            if isfield(tempStruct, 'latency')
-                tempStruct = rmfield(tempStruct, 'latency');
-            end
-            if isfield(tempStruct, 'duration')
-                tempStruct = rmfield(tempStruct, 'duration');
-            end
-            eventCodes = struct2cell(tempStruct);
-            
-            for k = 1:length(DataConfig.RelevantCodes) % loop through codes to check.
-                if isempty(find( [eventCodes{:}] == DataConfig.RelevantCodes{k}  ))
-                     % no matches found for this code. Do nothing. 
-                else % bingo, found a match. Can do specific trimming. 
-                    matchedEvents = 1; 
-                end
-            end
-            
-            if matchedEvents == 1
-                EEG  = pop_erplabDeleteTimeSegments( EEG , 'displayEEG', 0, 'endEventcodeBufferMS',  500, 'ignoreUseEventcodes', cell2mat(DataConfig.RelevantCodes), 'ignoreUseType', 'Use', 'startEventcodeBufferMS',  500, 'timeThresholdMS',  2000 );
-            else % else just general trimming.
-                disp('ALERT: This dataset has 0 instances of the relevant triggers.');
-                EEG  = pop_erplabDeleteTimeSegments( EEG , 'timeThresholdMS',  2000 );
-            end
-        else
-            EEG  = pop_erplabDeleteTimeSegments( EEG , 'timeThresholdMS',  2000 );
-        end
-        
+%         %Remove segments of EEG during the break periods in between trial blocks (defined as 5 seconds or longer in between successive stimulus event codes)
+%         if ~isempty(DataConfig.RelevantCodes)
+%             % ok, but if there are no events consistent with the relevant
+%             % codes this will crash. So need to check for that too. 
+%             matchedEvents = 0; % start at 0 and update if a match is found. 
+%             % remove the extra fields (if present).
+%             tempStruct = EEG.event;
+%             if isfield(tempStruct, 'urevent')
+%                 tempStruct = rmfield(tempStruct, 'urevent');
+%             end
+%             if isfield(tempStruct, 'latency')
+%                 tempStruct = rmfield(tempStruct, 'latency');
+%             end
+%             if isfield(tempStruct, 'duration')
+%                 tempStruct = rmfield(tempStruct, 'duration');
+%             end
+%             eventCodes = struct2cell(tempStruct);
+%             
+%             for k = 1:length(DataConfig.RelevantCodes) % loop through codes to check.
+%                 if isempty(find( [eventCodes{:}] == DataConfig.RelevantCodes{k}  ))
+%                      % no matches found for this code. Do nothing. 
+%                 else % bingo, found a match. Can do specific trimming. 
+%                     matchedEvents = 1; 
+%                 end
+%             end
+%             
+%             if matchedEvents == 1
+%                 EEG  = pop_erplabDeleteTimeSegments( EEG , 'displayEEG', 0, 'endEventcodeBufferMS',  500, 'ignoreUseEventcodes', cell2mat(DataConfig.RelevantCodes), 'ignoreUseType', 'Use', 'startEventcodeBufferMS',  500, 'timeThresholdMS',  2000 );
+%             else % else just general trimming.
+%                 disp('ALERT: This dataset has 0 instances of the relevant triggers.');
+%                 EEG  = pop_erplabDeleteTimeSegments( EEG , 'timeThresholdMS',  2000 );
+%             end
+%         else
+%                 EEG  = pop_erplabDeleteTimeSegments( EEG , 'timeThresholdMS',  2000 );
+%         end
+%         
         %Load parameters for rejecting especially noisy segments of EEG during trial blocks from Excel file ICA_Prep_Values.xls. Default parameters can be used initially but may need
         % to be modified for a given participant on the basis of visual inspection of the data.
         

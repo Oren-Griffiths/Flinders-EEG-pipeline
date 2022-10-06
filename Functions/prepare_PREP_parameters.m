@@ -14,8 +14,8 @@ DataConfig = DataConfigIn;
 % detrendIn parameters
 % this can be skipped because 'removeTrend' parses input variables nicely.
 % But it is added for consistency.
-% Make sure to detrend mastoids, even though they don't get interpolated
-% or referenced
+% Make sure to detrend and denoise mastoids, even though they don't get interpolated
+% or referenced here (but means they're available for referencing later). 
 PrepConfig.detrendIn.detrendChannels = [DataConfig.firstScalp: DataConfig.lastScalp, ...
     DataConfig.KeyChans{3}, DataConfig.KeyChans{4}];
 PrepConfig.detrendIn.detrendType = 'high pass';
@@ -27,7 +27,8 @@ PrepConfig.lineNoiseIn.fPassBand = [0 , DataConfig.DownSample{1}];
 PrepConfig.lineNoiseIn.Fs = DataConfig.DownSample{1};
 PrepConfig.lineNoiseIn.fScanBandWidth = 2;
 PrepConfig.lineNoiseIn.lineFrequencies = [50];
-PrepConfig.lineNoiseIn.lineNoiseChannels = [DataConfig.firstScalp: DataConfig.lastScalp];
+PrepConfig.lineNoiseIn.lineNoiseChannels = [DataConfig.firstScalp: DataConfig.lastScalp, ...
+    DataConfig.KeyChans{3}, DataConfig.KeyChans{4}];
 PrepConfig.lineNoiseIn.maximumIterations = 10;
 PrepConfig.lineNoiseIn.p = 0.01;
 PrepConfig.lineNoiseIn.pad = 0;
@@ -42,14 +43,12 @@ PrepConfig.lineNoiseIn.tau = 100;
 % avoid the external (EX) channels in this calculation.
 PrepConfig.referenceIn.evaluationChannels = [DataConfig.firstScalp : DataConfig.lastScalp];
 PrepConfig.referenceIn.rereference =  [DataConfig.firstScalp:DataConfig.lastScalp];
-if strcmp(DataConfig.ReReference{1}, 'Mastoid')
-    PrepConfig.referenceIn.referenceChannels = [DataConfig.KeyChans{3}, DataConfig.KeyChans{4}];
-    PrepConfig.referenceIn.referenceType = 'specific'; % just does mastoids.
-else % just do the regular rereferencing.
-    % that is, a robust (interpolated) reference based on all scalp chans.
-    PrepConfig.referenceIn.referenceType = 'robust';
-    PrepConfig.referenceIn.referenceChannels = [DataConfig.firstScalp : DataConfig.lastScalp];
-end
+% even if you do a specific reference, e.g. mastoids should do robust
+% referencing first (for purposes of channel interpolation). Can switch to
+% e.g. mastoids later.
+PrepConfig.referenceIn.referenceType = 'robust';
+PrepConfig.referenceIn.referenceChannels = [DataConfig.firstScalp : DataConfig.lastScalp];
+
 PrepConfig.referenceIn.interpolationOrder  = 'post-reference';% 'post-reference'; or 'post';
 PrepConfig.referenceIn.meanEstimateType = 'median'; % 'median'
 PrepConfig.referenceIn.channelLocations = EEG.chanlocs(DataConfig.firstScalp : DataConfig.lastScalp);

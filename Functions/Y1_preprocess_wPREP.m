@@ -101,10 +101,10 @@ SUB = DataConfig.SUB;
             EEG = pop_resample(EEG, DataConfig.DownSample{1});
         end
         % save downsampled, or non-downsampled, as new data set. 
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2,'setname',[SUB{i} '_ds'],...
-            'savenew',[Subject_Path SUB{i} '_ds.set'] ,'gui','off');
+        % and do the extended checks initially only.
+        EEG = pop_saveset(EEG, 'filename', [SUB{i} '_ds.set'], ...
+            'filepath', [Subject_Path], 'check', 'on', 'savemode', 'onefile');
         
-        % For PREP, only calculate the HEOG and VEOG (no mastoid/average reference reference)
         % choose relevant channel montage.
         switch DataConfig.RawFileType{1}
             case '.bdf'
@@ -119,8 +119,9 @@ SUB = DataConfig.SUB;
         
         % Add channel location information corresponding to the 3-D coordinates of the electrodes based on 10-10 International System site locations
         EEG = pop_chanedit(EEG, 'lookup',[Current_File_Path filesep 'SupportingDocs' filesep DataConfig.ChanLocs{1}]);
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 3, 'setname', [SUB{i} '_ds_addChans'], ...
-            'savenew', [Subject_Path SUB{i} '_ds_addChans.set'], 'gui', 'off');
+        % can save with channels initially added, if needed.
+        % EEG = pop_saveset(EEG, 'filename', [SUB{i} '_ds_addChans.set'], ...
+        %     'filepath', [Subject_Path],  'savemode', 'onefile');
         
         %% and now the PREP section
         % Used for basic cleaning, high pass filtering and detection and
@@ -146,7 +147,8 @@ SUB = DataConfig.SUB;
         % use default 0.5Hz cut-off (but written in case we need to change).
         detrendIn = PrepConfig.detrendIn;
         [EEG, detrendOut] = removeTrend(EEG, detrendIn);
-        % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_detrend.set'],'filepath',Subject_Path);
+        % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_detrend.set'], ...
+        % 'filepath', Subject_Path,  'savemode', 'onefile');
         
         % 3. Remove line noise without committing to a filtering strategy
         % just the scalp channels, and multiples of 50Hz for Australia.
@@ -154,7 +156,8 @@ SUB = DataConfig.SUB;
         % Apparently fails without specifying sample frequency explicitly?
         lineNoiseIn = PrepConfig.lineNoiseIn;
         [EEG, lineNoiseOut] = cleanLineNoise(EEG, lineNoiseIn);
-        % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_deNoise.set'],'filepath',Subject_Path);
+        % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_deNoise.set'],...
+        % 'filepath', Subject_Path , 'savemode', 'onefile');
         
         % 4. Robustly reference the signal relative to an estimate of the “true” average reference
         % AND simultaneously
@@ -171,7 +174,8 @@ SUB = DataConfig.SUB;
             AvgRef = mean(EEG.data(DataConfig.firstScalp:DataConfig.lastScalp,:),1);
             EEG.data = EEG.data - AvgRef;
         end
-        % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_ref.set'],'filepath',Subject_Path);
+        % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_ref.set'],...
+        % 'filepath', Subject_Path,  'savemode', 'onefile');
         % 6. Produce reports if desired
         % can't get this to work for now as it's a product of the
         % PIPELINE and that doesn't seem to be working, so let's
@@ -188,8 +192,8 @@ SUB = DataConfig.SUB;
         % ERP CORE default settings: (non-causal Butterworth impulse response function, 0.1 Hz half-amplitude cut-off, 12 dB/oct roll-off)
         
         % save immediately post PREP
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 4, 'setname', [SUB{i} '_ds_addChans_PREP'], ...
-            'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP.set'], 'gui', 'off');
+        EEG = pop_saveset(EEG, 'filename', [SUB{i} '_ds_addChans_PREP.set'], ...
+            'filepath', [Subject_Path],  'savemode', 'onefile');
         
         % do simple FFT of pre-filtered data and save it for later drawing.
         tempvar = [];
@@ -205,9 +209,10 @@ SUB = DataConfig.SUB;
             'Cutoff',  [DataConfig.HPfilter{1} DataConfig.LPfilter{1}], ...
             'Design', 'butter', 'Filter', 'bandpass', 'Order',  DataConfig.FiltOrder{1}, 'RemoveDC', 'on' );
         
-        % save at the bandpass point.
-                [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 5, 'setname', [SUB{i} '_ds_addChans_PREP_bp'], ...
-            'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp.set'], 'gui', 'off');
+        % save at the bandpass point (if needed).
+        % EEG = pop_saveset(EEG, 'filename', [SUB{i} '_ds_addChans_PREP_bp.set'], ...
+        %    'filepath', [Subject_Path],  'savemode', 'onefile');
+
 
         % do simple FFT of post-filtered data and save it for later
         filt_FFT = zeros(DataConfig.TotalChannels{1}, length(abs(SimpleFFT(EEG.data(1,:)))));
@@ -275,13 +280,29 @@ SUB = DataConfig.SUB;
             save(CleaningFilename , 'referenceOut');
         end
         
-        % finally rereference to Mastoids if that's specified, but only if
-        % PREP == 0, as otherwise PREP will have done the mastoid
-        % reference already (if that was declared). 
-        if strcmp(DataConfig.ReReference{1}, 'Mastoid') && DataConfig.PREP{1} == 0
-            MastoidRef_filename = ['ChannelsFor' num2str(DataConfig.TotalChannels{1}) '_addMastoidsPostPREP.txt'];
-            EEG = pop_eegchanoperator( EEG, [Current_File_Path filesep 'SupportingDocs' filesep MastoidRef_filename]);
-        else % leave the reference in place that PREP pipeline applied. 
+        % finally rereference to Mastoids if that's specified.
+        % Changed 051022. PREP won't do robust referencing if you pass it a specific reference.
+        % So best to do robust first, then apply mastoid references later.
+        if strcmp(DataConfig.ReReference{1}, 'Mastoid')
+            if DataConfig.PREP{1} == 1
+                % find PREP's reference.
+                CommonReference = referenceOut.referenceSignal;
+                % calculate a mastref that it PREP adjusted.
+                MastRef = mean(EEG.data([DataConfig.KeyChans{3},DataConfig.KeyChans{4}],:),1) - CommonReference;
+                for thisChan = 1: size(EEG.data,1)
+                    EEG.data(thisChan,:) = EEG.data(thisChan,:) - MastRef;
+                end
+                MastoidRef_filename = ['ChannelsFor' num2str(DataConfig.TotalChannels{1}) '_addMastoidsPostPREP.txt'];
+                EEG = pop_eegchanoperator( EEG, [Current_File_Path filesep 'SupportingDocs' filesep MastoidRef_filename]);
+            else
+                % a non-PREP mastoid reference is subtracted from each
+                % channel.
+                MastRef = mean(EEG.data([DataConfig.KeyChans{3},DataConfig.KeyChans{4}],:),1);
+                for thisChan = 1: size(EEG.data,1)
+                    EEG.data(thisChan,:) = EEG.data(thisChan,:) - MastRef;
+                end
+            end
+        else % leave the reference in place that PREP pipeline applied. Better.
         end
         
         
@@ -289,12 +310,9 @@ SUB = DataConfig.SUB;
         % Add channel location information corresponding to the 3-D coordinates of the electrodes based on 10-10 International System site locations
         EEG = pop_chanedit(EEG, 'lookup',[Current_File_Path filesep 'SupportingDocs' filesep DataConfig.ChanLocs{1}]);
         % save the output.
-        [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 6, 'setname', [SUB{i} '_ds_addChans_PREP_bp_refs'], ...
-            'savenew', [Subject_Path SUB{i} '_ds_addChans_PREP_bp_refs.set'], 'gui', 'off');
-        
-        % old command doesn't udpate the name of the .set file internally.
-        % EEG = pop_saveset( EEG, 'filename',[SUB{i} '_ds_PREP.set'],'filepath',Subject_Path);
-        
+        EEG = pop_saveset(EEG, 'filename', [SUB{i} '_ds_addChans_PREP_bp_refs.set'], ...
+            'filepath', [Subject_Path],  'savemode', 'onefile');
+                
         %% do the visualizations for each subject and save them.
         
         % do a quick plot of effect of bandpass filter first.

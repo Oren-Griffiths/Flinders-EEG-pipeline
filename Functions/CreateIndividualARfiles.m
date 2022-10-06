@@ -30,7 +30,10 @@ for ThisRow = 2:(NoOfSubs+1)
     ICAprep(ThisRow,2:4) = ICAvalues;
 end
 % output that cell into an excel file.
-writecell(ICAprep,[outFilePath filesep 'ICA_Prep_Values.xlsx']);
+% make sure that any existing file is scrubbed.
+tempFilename = [outFilePath filesep 'ICA_Prep_Values.xlsx'];
+delete tempFilename; % won't crash if absent, will just give a command line warning.
+writecell(ICAprep,tempFilename);
 
 %% AR_Parameters_for_MW_Blinks.xlsx
 % initialize cell array of correct size
@@ -64,7 +67,9 @@ for ThisRow = 2:(NoOfSubs+1)
     AR_blinks(ThisRow,2:7) = AR_blinkValues;
 end
 % output that cell into an excel file.
-writecell(AR_blinks,[outFilePath filesep 'AR_Parameters_for_MW_Blinks.xlsx']);
+tempFilename = [outFilePath filesep 'AR_Parameters_for_MW_Blinks.xlsx'];
+delete tempFilename;
+writecell(AR_blinks,tempFilename);
 
 %% AR_Parameters_for_SVT_CRAP.xlsx
 % initialize cell array of correct size
@@ -87,7 +92,9 @@ for ThisRow = 2:(NoOfSubs+1)
     AR_SVT(ThisRow,2:6) = AR_SVT_values;
 end
 % output that cell into an excel file.
-writecell(AR_SVT,[outFilePath filesep 'AR_Parameters_for_SVT_CRAP.xlsx']);
+tempFilename = [outFilePath filesep 'AR_Parameters_for_SVT_CRAP.xlsx'];
+delete tempFilename;
+writecell(AR_SVT,tempFilename);
 
 %% finally, initialize an observed ICA component file too.
 % but only if it's during the PreICA stage as you need to manually enter
@@ -122,7 +129,12 @@ if strcmp(DataConfig.mode, 'PreICA') == 1
     % create a participant mask file that defaults to including everyone. 
     % use the ICAcomps variable to do it because it's very similar.. 
     ICAcomps(2:end,2) = {1};
-    writecell(ICAcomps,[outFilePath filesep 'PIDmask.xlsx']);
+    % and initialize and write the variable. 
+    tempFilename = [outFilePath filesep 'PIDmask.xlsx'];
+    delete tempFilename;
+    writecell(ICAcomps,tempFilename);
+
+    
 end % of PreICA mode check
 
 

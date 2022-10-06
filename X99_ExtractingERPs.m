@@ -4,39 +4,42 @@
 
 %% Get the extra details from the user [i.e. change these values.]
 % what's the relevant config file called?
-ConfigFileName = 'WIMR_Config_testing';
+ConfigFileName = 'Config_Danielle_051022';
 
 % 10:20 names of the channels you want. If you select more than one
 % channel, it will average across them (i.e. treat it as a single montage).
 % If you want to compare different channels/AOIs, run this script more
 % than once with different channels chosen each time.
-keyChans = {'FCz', 'Fz', 'Cz', 'FC1', 'FC2', 'C1', 'C2', 'F1', 'F2'};
+% for fronto-central montage
+keyChans = { 'Cz', 'C3', 'C4',  'FC1', 'FC2', 'Fz', 'F3', 'F4' };
+% for parietal sites (p3a)
+% keyChans = { 'PO3', 'PO4', 'Pz',  'P3', 'P4', 'CP1', 'CP2' };
 
 % what time period (ms) do you want visualized. This will obviously break
 % if you choose an area large than the epoch declared in DataConfig, so
 % choose sensibly.
-wholeEpoch = [-200, 800];
+wholeEpoch = [-200, 400];
 
 % choose a time period you want to take the average across. Measured in ms.
-measureWindow = [50, 150];
+measureWindow = [100, 200];
 
 % if a person has less than X clean epochs are AR-rejection, then remove
 % them from the averaging process. Set X. Put empty '[]' to ignore min.
-minEpochs = 30;
+minEpochs = 1;
 
 % include the option of generating a "mask" file which has an 1/0 entry for
 % every subject: 1s being included in the grand average analysis and 0s
 % being excluded. If you just want to include everyone, write 'none'.
 % default file created by X0 file is called 'PIDmask.xlsx'
-maskFile = 'none'; 
+maskFile = 'none';
 
-% if you want to e.g. compare bin 1 with bin 3 in a 6 bin experiment, then 
-% put in a vector of:  
+% if you want to e.g. compare bin 1 with bin 3 in a 6 bin experiment, then
+% put in a vector of:
 % [1 0 -1 0 0 0 ]
 % needs to have same number of entries as there are bins. Complex contrasts
 % supported, e.g. [ 1 -0.5 -0.5 0 0 0]. If you just want all bins considered
 % separately, leave it blank. Must be normalized (i.e. sum to 0), ...
-% and ideally abs(sum) = 2 as well. 
+% and ideally abs(sum) = 2 as well.
 binContrast = [];
 
 % You can specify an extra lowpass filter that may be needed for terrible
@@ -44,26 +47,33 @@ binContrast = [];
 % you may be forced to filter out HF noise again. You can do the same as
 % what you've done previously (type 'same'). Otherwise choose a value e.g.
 % 40Hz and enter it as a string '40'.
-extraLowPass = 'same';
+extraLowPass = 'none';
 
-% you can shift all epochs in a bin either forwards (+ values) or backwards
-% (- values) in time by a integer number of samples (e.g. 4ms at 256hz).
-% You will mostly leave it empty and this will be skipped. But if you enter
-% any values, you have to put one value per bin, e.g. [ 0 0 -10] for 3 bin
-% analysis. 
-sampleCorrection = [0,0,0,0,-8,-8];
+% add in a vector of how many samples to shift one or more bins (if, for
+% example, there is a triggering issue where one trigger waits a frame or
+% two and others do not). Should usually be empty. If there are values,
+% then you'll need to supply a number of samples per bin (in a vector),
+% e.g. for a 4 bin experiment where you want to shift bin 4 only [0,0,0,3];
+sampleCorrection = [0,0,0,0,0,0,0,0,0,0,0,0];
 
 % do you want the output figures to show information about peak value and
-% latency (in ERP waveforms) and min/max channel values in the topoplots? 
-% if you want this info, set variable to 1. Else leave as 0. 
-showPeakInfo = 1; 
+% latency (in ERP waveforms) and min/max channel values in the topoplots?
+% if you want this info, set variable to 1. Else leave as 0.
+showPeakInfo = 0;
 % do you want to add a fine overlay of each individual to the grand average
 % waveforms (e.g. to check for presence of outliers)? If so, set to 1.
-showIndividualTraces = 1; 
+showIndividualTraces = 1;
 % Ok, what does it do with this info?
 % Generates a global average figure, a data set with raw sample-by-sample
 % data per person, averaged values per participant during the measurement
 % window. Places output in current folder. File is 'ERP_output.mat'
+
+% For the visualizations, do you want to have a fixed y-axis? 
+% If not, leave it empty. 
+fixedYlim = [-5,5];
+
+% can declare the colour scheme in advance (for topos). 
+colScheme = 'jet';
 
 %% open the config file to grab rest of the relevant info.
 % let's loop through all relevant files and draw the ERG1 figures.
@@ -75,6 +85,7 @@ Options = detectImportOptions(ConfigFilePath);
 for k = 1:numel(Options.VariableTypes)
     Options.VariableTypes{k} = 'char';
 end
+
 DataConfig = table2struct(readtable(ConfigFilePath, Options));
 DataConfig = adjustConfigData(DataConfig);
 
@@ -122,7 +133,7 @@ end
 % get channel numbers
 % that is, convert channel indices from channel names.
 % have done this assuming that all bins have the same channel location
-% structure, but robust to missing values for some bins. 
+% structure, but robust to missing values for some bins.
 for ThisChan = 1:length(keyChans)
     keyChanIdx(ThisChan) = find(strcmp({chanlocs.labels}, keyChans{ThisChan})==1);
     ThisBin = NoOfBins; % skip out of the loop.
@@ -195,7 +206,7 @@ else
     disp('Error in supplied extra filter. None applied');
     extraLowPass_num = [];
 end
-% extraLowPass = DataConfig.LPfilter{1}; % 
+% extraLowPass = DataConfig.LPfilter{1}; %
 
 
 %% loop through SUBS and gather *per participant* averages by averaging across epochs (within bins).
@@ -258,20 +269,23 @@ for k = 1:length(SUB)
                                 % and then apply that filter in a
                                 % zero-phase compliant way.
                                 participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));
-                                %
+                                % figure out how many non-nan epochs there
+                                % were.
                                 validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
                                 epochCounts{ThisBin}(k) = validEpochs;
                             else
                                 participantAverages{ThisBin}(k,ThisChan,:) = filtfilt(dFilter,temp(ThisChan,:));
-                                %
                                 validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
                                 epochCounts{ThisBin}(k) = validEpochs;
                             end
+                            
                         else % no additional filters. Just take the data as they are.
                             participantAverages{ThisBin}(k,ThisChan,:) = temp(ThisChan,:);
+                            %
                             validEpochs = length(squeeze(mean(GoodTrials(ThisBin).data(keyChanIdx,:,:), [2,1],'omitnan')));
                             epochCounts{ThisBin}(k) = validEpochs;
                         end
+                        
                         % apply a time correction, if requested.
                         if ~isempty(sampleCorrection)
                             % time correction sought...
@@ -290,7 +304,7 @@ for k = 1:length(SUB)
                                 participantAverages{ThisBin}(k,ThisChan,:) = tmp;
                             end % of bin by bin check
                         end % sampleCorrection check.
-                    end % of channel by channel loop
+                    end % of channel by channel loop.
                     
                     display(['Processing SUB ' SUB{k} ' Bin ' num2str(ThisBin)]);
                 else
@@ -303,7 +317,7 @@ end % of subject by subject loop
 
 
 %% correct or adjust the data, if necessary
-% will do the bin contrast below when dimensionality reduced. 
+% will do the bin contrast below when dimensionality reduced.
 if ~isempty(binContrast)
     involvedBins = find(binContrast);
     for i = 1:length(involvedBins)
@@ -313,7 +327,7 @@ if ~isempty(binContrast)
             contrastAverages = contrastAverages + participantAverages{involvedBins(i)}(:,:,:) .*binContrast(involvedBins(i));
         end
     end
-    % only one bin now. 
+    % only one bin now.
     NoOfBins = 1;
     % move the data back into four dimensional structure.
     clear participantAverages; % get rid of structure of variable. restate.
@@ -323,7 +337,7 @@ end
 
 % apply the masking vector to exclude some participants ,if appropriate.
 if isempty(maskVector)
-    % do nothing and leave participantAverages intact. 
+    % do nothing and leave participantAverages intact.
 else
     for ThisBin = 1:NoOfBins
         participantAverages{ThisBin}(~maskVector, :, :) = NaN;
@@ -356,7 +370,7 @@ rawdataFilename = [pwd filesep 'ERP_GrandAverages' filesep 'RawOutput_PIDbySampl
 for ThisBin = 1:NoOfBins
     % declare a useful tab name
     if isempty(binContrast)
-    tabname = ['Bin' num2str(ThisBin)];
+        tabname = ['Bin' num2str(ThisBin)];
     else
         tabname = 'DifferenceWave';
     end
@@ -422,7 +436,7 @@ for ThisBin = 1:NoOfBins
     minToPlot = meansToPlot - SEMs;
     maxToPlot = meansToPlot + SEMs;
     
-    % find peak within measurement window? 
+    % find peak within measurement window?
     % PIDs by chans by samples.
     findingPeaks = squeeze(nanmean(participantAverages{ThisBin} (:,keyChanIdx,measurePeriod), [2, 1]));
     [posPeak, posPeakIdx] = max(findingPeaks);
@@ -430,12 +444,12 @@ for ThisBin = 1:NoOfBins
     timesToMeasure = times(measurePeriod);
     posPeakTime = timesToMeasure(posPeakIdx);
     negPeakTime = timesToMeasure(negPeakIdx);
-    posPeakText = ['Max Val = ' num2str(round(posPeak,2)) 'uV at ' ...
+    posPeakText = ['Max Val = ' num2str(round(posPeak,3)) 'uV at ' ...
         num2str(round(posPeakTime,2)) 's' ];
-    negPeakText = ['Min Val = ' num2str(round(negPeak,2)) 'uV at ' ...
+    negPeakText = ['Min Val = ' num2str(round(negPeak,3)) 'uV at ' ...
         num2str(round(negPeakTime,2)) 's' ];
     
-    % start drawing 
+    % start drawing
     figure;
     hold on
     xline(0, '-k'); % show time zero
@@ -456,15 +470,18 @@ for ThisBin = 1:NoOfBins
         title(['Global Mean And SEMs Of Difference Wave at channel(s): ' string(strjoin(keyChans))]);
     end
     if showPeakInfo == 1
-        % provide some info overlays about peaks. 
+        % provide some info overlays about peaks.
         text(posPeakTime, posPeak, ['\leftarrow ' posPeakText], 'Color','green','FontSize',10);
         text(negPeakTime, negPeak, ['\leftarrow ' negPeakText], 'Color','green','FontSize',10);
     end
     ylabel('Voltage(microvolts)');
     xlabel('Time(s)');
     y_cap = 2*max(abs(meansToPlot));
-    ylim([-1*y_cap, y_cap]);
-    % change some values and save.
+    if isempty(fixedYlim)
+      ylim([-1*y_cap, y_cap]);  
+    else
+      ylim(fixedYlim);  
+    end
     f = gcf;
     f.Units = 'inches';
     f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
@@ -477,14 +494,14 @@ for ThisBin = 1:NoOfBins
     
     % ok, need to pull mean voltage over measurement window, per
     % channel. And that needs to be averaged across participants too.
-
+    
     % participantAverages
     % structure: a n-element cell array (cells are bins). Each bin contains a
     % 3d structure: PIDs by chans by samples.
     % sequentially averages by saampels, then across PIDs. But only in
-    % measurement window. 
+    % measurement window.
     dataToPlot = nanmean(participantAverages{ThisBin} (:,:,measurePeriod), [3, 1]);
-    % limit the plotting to scalp channels. 
+    % limit the plotting to scalp channels.
     dataToPlot = dataToPlot(1:DataConfig.TotalChannels{1});
     % now should be: PIDs by chans
     
@@ -494,26 +511,35 @@ for ThisBin = 1:NoOfBins
         % and grab some information about min/max
         [minChanVal, minChanIdx] = min(dataToPlot);
         [maxChanVal, maxChanIdx] = max(dataToPlot);
-        minChanLbl = chanlocs(minChanIdx).labels; 
+        minChanLbl = chanlocs(minChanIdx).labels;
         maxChanLbl = chanlocs(maxChanIdx).labels;
         minText = ['Min Chan: ' minChanLbl ' at ' num2str(round(minChanVal,2)) 'uV'];
         maxText = ['Max Chan: ' maxChanLbl ' at ' num2str(round(maxChanVal,2)) 'uV'];
         figure;
         if showPeakInfo == 1
             % you've requested info about electrode locations.
-            topoplot(dataToPlot, chanlocs, 'electrodes' ,'ptslabels');
+            topoplot(dataToPlot, chanlocs(1:DataConfig.TotalChannels{1}), 'electrodes' ,'ptslabels');
         else
             % you just want a standard image. No info overlays.
-            topoplot(dataToPlot, chanlocs);
+            topoplot(dataToPlot, chanlocs(1:DataConfig.TotalChannels{1}), 'style', 'fill', 'numcontour', 3);
+
+            % topoplot(dataToPlot, chanlocs);
         end
         colorbar;
+        colormap(colScheme);
         if isempty(binContrast)
             title(['Topoplot of Bin: ' num2str(ThisBin) 'during measurement window']);
         else
             title(['Topoplot of difference wave during measurement window']);
         end
         colourCap = 1.5*max(abs(dataToPlot));
-        caxis([-1*colourCap, colourCap]);
+        
+        if isempty(fixedYlim)
+            caxis([-1*colourCap, colourCap]);
+        else
+            caxis(fixedYlim);
+        end
+        
         if showPeakInfo == 1
             % add text related to min/max
             annotation('textbox', [0, 0.15, 0, 0], 'string', minText, 'FitBoxToText','on');
@@ -533,22 +559,59 @@ end % of cycling through bins.
 % settings. Good for comparing across bins, but only if there are multiple
 % bins.
 
+
+% a set of six colours (which then repeat, if necessary)
+lineColours = {[1, 0, 0], [0, 1, 0], [0, 0, 1], ...
+    [1, 1, 0], [0, 1, 1], [1, 0, 1]};
+shadeColours = {[0.8, 0.2, 0.2], [0.2, 0.8, 0.2], [0.2, 0.2, 0.8], ...
+    [0.8, 0.8, 0.2], [0.2, 0.8, 0.8], [0.8, 0.2, 0.8]};
+
 if isempty(binContrast) & NoOfBins > 1
     dataToPlot = zeros(NoOfBins,length(timesToPlot));
-    for ThisBin = 1:NoOfBins
-        dataToPlot(ThisBin,:) = nanmean(tempForOutput{ThisBin},1);
-        BinLbls{ThisBin} = ['Bin ' num2str(ThisBin)];
-    end
     figure;
-    plot(timesToPlot,dataToPlot);
-    %
-    title('AllBins');
-    legend(BinLbls);
-    xline(0, '-k'); % show time zero
-    ylabel('Voltage(microvolts)');
-    xlabel('Time(s)');
+    hold on
+    for ThisBin = 1:NoOfBins
+        mean_vals = mean(tempForOutput{ThisBin},1, 'omitnan');
+        BinLbls{ThisBin} = ['Bin ' num2str(ThisBin)];
+        % find PID count.
+        validPIDs = sum(~isnan(tempForOutput{ThisBin}),2);
+        PIDcount = length(validPIDs(validPIDs > 0));
+        %
+        plus_sem = mean_vals + ...
+            std(tempForOutput{ThisBin},[],1, 'omitnan')./sqrt(PIDcount-1);
+        minus_sem = mean_vals - ...
+            std(tempForOutput{ThisBin},[],1,'omitnan')./sqrt(PIDcount-1);
+        % calculate the shaded region
+        x2 = [timesToPlot, fliplr(timesToPlot)];
+        inBetween = [plus_sem, fliplr(minus_sem)];
+        
+        % make an adjustment to accomodate > 6 conditions.
+        thisLine = mod(ThisBin,6);
+        if thisLine == 0
+            thisLine = 6;
+        end
+        
+        fill(x2, inBetween,shadeColours{thisLine}, 'FaceAlpha',0.5, 'LineStyle', 'none');
+        
+        % and now draw the mean line plot
+        line(timesToPlot, mean_vals, ...
+            'Color', lineColours{thisLine}, 'LineWidth', 3, 'LineStyle', '-' );
+    end
+    
+    % and sort out some other peripherals
+    % title('AllBins');
+    % legend(BinLbls);
+    xline(0, 'LineWidth', 1.5,'LineStyle', ':'); % show time zero
+    ylabel('Voltage(microvolts)', 'Fontsize', 16);
+    xlabel('Time(s)', 'Fontsize', 16);
+    ax = gca;
+    ax.FontSize = 16;
     y_cap = 2*max(abs(dataToPlot(:)));
-    ylim([-1*y_cap, y_cap]);
+    if isempty(fixedYlim)
+        ylim([-1*y_cap, y_cap]);
+    else
+        ylim(fixedYlim);
+    end
     %
     f = gcf;
     f.Units = 'inches';
@@ -557,5 +620,94 @@ if isempty(binContrast) & NoOfBins > 1
     disp('Saving all bin waveform');
     exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
     close(gcf);
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %% Danielle specific drawing script.
+% a set of six colours (which then repeat, if necessary)
+
+% which bins to contrast with each other?
+outFigs = {[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12], [2, 3, 8, 9]};
+condlbls = {'AudStand', 'AudDevRew', 'AudDevCtrl', ...
+    'VisStand', 'VisDevRew', 'VisDevCtrl', ...
+    'BaseAudStand', 'BaseAudDevRew', 'BaseAudDevCtrl', ...
+    'BaseVisStand', 'BaseVisDevRew', 'BaseVisDevCtrl'};
+
+for thisFig = 1:length(outFigs)
+    
+    lineColours = {[1, 0, 0], [0, 1, 0], [0, 0, 1], ...
+        [1, 1, 0], [0, 1, 1], [1, 0, 1]};
+    shadeColours = {[0.8, 0.2, 0.2], [0.2, 0.8, 0.2], [0.2, 0.2, 0.8], ...
+        [0.8, 0.8, 0.2], [0.2, 0.8, 0.8], [0.8, 0.2, 0.8]};
+    
+    if isempty(binContrast) & NoOfBins > 1
+        dataToPlot = zeros(NoOfBins,length(timesToPlot));
+        figure;
+        hold on
+        binsToPlot = outFigs{thisFig};
+        clear BinLbls;
+        
+        % shade in the measurement region.
+        xShade = [measureWindow(1)/1000, measureWindow(1)/1000, ...
+            measureWindow(2)/1000, measureWindow(2)/1000];
+        yShade = [fixedYlim(1), fixedYlim(2), fixedYlim(2), fixedYlim(1)];
+        fill(xShade, yShade, [0.5, 0.5, 0.5], 'FaceAlpha',0.5, 'LineStyle', 'none');
+        BinLbls{1} = 'MeasureWindow';
+            
+        for ThisBin = 1:length(binsToPlot)
+            mean_vals = mean(tempForOutput{binsToPlot(ThisBin)},1, 'omitnan');
+            BinLbls{ThisBin*2} = condlbls{binsToPlot(ThisBin)};
+            BinLbls{ThisBin*2+1} = condlbls{binsToPlot(ThisBin)};
+            % find PID count.
+            validPIDs = sum(~isnan(tempForOutput{binsToPlot(ThisBin)}),2);
+            PIDcount = length(validPIDs(validPIDs > 0));
+            %
+            plus_sem = mean_vals + ...
+                std(tempForOutput{binsToPlot(ThisBin)},[],1, 'omitnan')./sqrt(PIDcount-1);
+            minus_sem = mean_vals - ...
+                std(tempForOutput{binsToPlot(ThisBin)},[],1,'omitnan')./sqrt(PIDcount-1);
+            % calculate the shaded region
+            x2 = [timesToPlot, fliplr(timesToPlot)];
+            inBetween = [plus_sem, fliplr(minus_sem)];
+            
+            % make an adjustment to accomodate > 6 conditions.
+            thisLine = mod(ThisBin,6);
+            if thisLine == 0
+                thisLine = 6;
+            end
+            
+            fill(x2, inBetween,shadeColours{thisLine}, 'FaceAlpha',0.5, 'LineStyle', 'none');
+            
+            % and now draw the mean line plot
+            line(timesToPlot, mean_vals, ...
+                'Color', lineColours{thisLine}, 'LineWidth', 3, 'LineStyle', '-' );
+        end
+        
+        % and sort out some other peripherals
+        % title('AllBins');
+        lgd = legend(BinLbls, 'Location', 'northoutside');
+        lgd.FontSize = 8;
+        xline(0, 'LineWidth', 1.5,'LineStyle', ':'); % show time zero
+        ylabel('Voltage(microvolts)', 'Fontsize', 16);
+        xlabel('Time(s)', 'Fontsize', 16);
+        ax = gca;
+        ax.FontSize = 16;
+        y_cap = 2*max(abs(dataToPlot(:)));
+        if isempty(fixedYlim)
+            ylim([-1*y_cap, y_cap]);
+        else
+            ylim(fixedYlim);
+        end
+        %
+        f = gcf;
+        f.Units = 'inches';
+        f.OuterPosition = [0.5 0.5 7.5 7.5]; % make the figure 7 inches in size.
+        fig_filename = ['ERP_GrandAverages' filesep 'Bins_' ...
+            num2str(outFigs{thisFig}) '.png'];  
+        disp('Saving all bin waveform');
+        exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
+        close(gcf);
+    end
+    
 end
 
