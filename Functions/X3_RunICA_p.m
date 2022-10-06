@@ -51,7 +51,8 @@ clearvars -except DataConfig SUB;
         
         %Compute ICA weights with runICA (only easy option for Windows under
         %EEGlab), and it will choose others if available anyway.  
-        ChansForICA = [DataConfig.firstScalp:DataConfig.lastScalp]; 
+        ChansForICA = [DataConfig.firstScalp:DataConfig.lastScalp, ...
+            DataConfig.KeyChans{3}, DataConfig.KeyChans{4}]; 
         % runica can sometimes miscalculate rank and screw up. So make it
         % guess the rank, and force that rank onto the calculation using
         % 'pca' key value pair to avoid "ghost" (complex) components.

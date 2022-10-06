@@ -55,34 +55,34 @@ currentTime = clock;
 % calculates minutes since midnight.
 StartTime = currentTime(4)*60 + currentTime(5);
 
-%% do the preprocessing via PREP pipeline (or equivalent if PREP is
-% excluded). Also, can't do this parallel, as PREP calls up a
-% multithread loop, and those can't be nested.
-Y1_preprocess_wPREP;
-
-%% prepare for next step
-DataConfig.LastProcess = cellstr('X1_PreProcess');
-DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
-
-%% adjust events so they're on the correct timeline (if needed).
-tmpDataConfig = DataConfig;
-totalSUBS = length(tmpDataConfig.SUB);
-parfor loopIdx = 1:totalSUBS
-    SUB =  tmpDataConfig.SUB(loopIdx);
-    X1b_fixEvents_p(tmpDataConfig, SUB);
-end
-
-%% prepare for next step
-DataConfig.LastProcess = cellstr('X1b_fixEvents');
-DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event.set');
-
-%% do the ICA prep
-tmpDataConfig = DataConfig;
-totalSUBS = length(tmpDataConfig.SUB);
-parfor loopIdx = 1:totalSUBS
-    SUB =  tmpDataConfig.SUB(loopIdx);
-    X2_icaprep_p(tmpDataConfig, SUB);
-end
+% %% do the preprocessing via PREP pipeline (or equivalent if PREP is
+% % excluded). Also, can't do this parallel, as PREP calls up a
+% % multithread loop, and those can't be nested.
+% Y1_preprocess_wPREP;
+% 
+% %% prepare for next step
+% DataConfig.LastProcess = cellstr('X1_PreProcess');
+% DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs.set');
+% 
+% %% adjust events so they're on the correct timeline (if needed).
+% tmpDataConfig = DataConfig;
+% totalSUBS = length(tmpDataConfig.SUB);
+% parfor loopIdx = 1:totalSUBS
+%     SUB =  tmpDataConfig.SUB(loopIdx);
+%     X1b_fixEvents_p(tmpDataConfig, SUB);
+% end
+% 
+% %% prepare for next step
+% DataConfig.LastProcess = cellstr('X1b_fixEvents');
+% DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event.set');
+% 
+% %% do the ICA prep
+% tmpDataConfig = DataConfig;
+% totalSUBS = length(tmpDataConfig.SUB);
+% parfor loopIdx = 1:totalSUBS
+%     SUB =  tmpDataConfig.SUB(loopIdx);
+%     X2_icaprep_p(tmpDataConfig, SUB);
+% end
 
 %% prepare for next step
 DataConfig.LastProcess = cellstr('X2_icaprep');
@@ -91,7 +91,7 @@ DataConfig.LastSuffix = cellstr('_ds_addChans_PREP_bp_refs_event_icaPrep2.set');
 %% and run the ICA decomp
 tmpDataConfig = DataConfig;
 totalSUBS = length(tmpDataConfig.SUB);
-parfor loopIdx = 1:totalSUBS
+for loopIdx = 1:totalSUBS
     SUB =  tmpDataConfig.SUB(loopIdx);
     X3_RunICA_p(tmpDataConfig, SUB);
 end

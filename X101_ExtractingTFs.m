@@ -2,18 +2,21 @@
 
 % which condition do we want to process?
 % currently written to loop through all conditions.
-allConditions = {'B1(112)' , 'B2(114)' , 'B3(122)' , ...
-    'B4(124)' , 'B5(132)' , 'B6(134)'};
-% cond2use = 'B1(112)';
+
+% can be done with contains, so don't need all parts. 
+% somtimes triger 55 can be recorded as "condition55"
+allConditions = {'B1(' , 'B2(' , 'B3(' , ...
+    'B4(' , 'B5(' , 'B6(', 'B7(', 'B8(', ...
+    'B9(', 'B10(', 'B11(', 'B12('};
 
 % which channels do you want to use? 
 % currently written to loop through all scalp channels. 
-keyChans = 1:64; 
+keyChans = 1:32; 
 
 %% header structure grabs file and config data
 
 % what's the relevant config file called?
-ConfigFileName = 'WIMR_Config_TalkListenCued';
+ConfigFileName = 'Config_Danielle_051022';
 
 Current_File_Path = pwd;
 addpath('Functions');
@@ -30,9 +33,10 @@ DataConfig = adjustConfigData(DataConfig);
 eeglab;
 % just shorten variable name
 SUB = DataConfig.SUB;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% manual override for troubleshooting.
 
-
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for k = 1:length(SUB)
     tic;
     PIDfolder = [fileparts(pwd) filesep SUB{k}];
@@ -58,7 +62,8 @@ for k = 1:length(SUB)
         [~,t0] = min(abs(cell2mat(EEG.epoch(i).eventlatency)));
         % epochvect(i) = EEG.epoch(i).eventtype{t0};
         epochvect{i} = EEG.epoch(i).eventtype{t0};
-        if strcmp(epochvect{i},cond2use)
+        % if strcmp(epochvect{i},cond2use)
+        if contains(epochvect{i},cond2use)
             keepTrials(i) = 1;
         end
     end
@@ -88,9 +93,17 @@ for k = 1:length(SUB)
     
     for thisChan = keyChans       
         
+%         [ersp,itc,powbase,times,freqs,erspboot,itcboot,tfdata] = ...
+%             newtimef(data(thisChan,:,:),EEG.pnts, [tlimits], 256, cycles, ...
+%             'timesout', tempResolution,  'winsize', 128, ...
+%             'plotersp', 'off', 'plotitc', 'off', 'trialbase', 'on');
+        
+        % changed window size back to default (as don't have the luxury)
+        % but can buy some freq precision by increasing padratio. 
+        
         [ersp,itc,powbase,times,freqs,erspboot,itcboot,tfdata] = ...
             newtimef(data(thisChan,:,:),EEG.pnts, [tlimits], 256, cycles, ...
-            'timesout', tempResolution,  'winsize', 128, ...
+            'timesout', tempResolution, 'padratio', 8, 'winsize', 80,  ...
             'plotersp', 'off', 'plotitc', 'off', 'trialbase', 'on');
         
         %     if you want to plot the outputs, then use code of this form.
@@ -100,7 +113,7 @@ for k = 1:length(SUB)
         tf_data.PID = SUB{k};
         tf_data.cond(thisCond).chan(thisChan).lbl = EEG.chanlocs(thisChan).labels;
         tf_data.cond(thisCond).chan(thisChan).ersp = ersp;
-        tf_data.cond(thisCond).chan(thisChan).itc = itc;
+        tf_data.cond(thisCond).chan(thisChan).itc = abs(itc);
         % check to see if you need to write before writing. 
         if isempty(tf_data.cond(thisCond).times) 
           tf_data.cond(thisCond).times = times;  
@@ -126,4 +139,8 @@ clear tf_data; % and then start over.
 
 disp(['PID ' SUB{k} ' performed in ' num2str(toc)    ' seconds' ]);
 end % of PID looping cycle
+
+% and save the chanlocs structure for later
+chanlocs = EEG.chanlocs;
+save('chanlocs.mat', 'chanlocs');
 

@@ -1,33 +1,22 @@
+%% input parameters.
 
-% parameters
+% which condition do we want to process?
+% currently written to loop through all conditions.
 
-keyChans = 1:64; 
-% for global field power
+% can be done with contains, so don't need all parts. 
+% somtimes triger 55 can be recorded as "condition55"
+allConditions = {'B1(' , 'B2(' , 'B3(' , ...
+    'B4(' , 'B5(' , 'B6(', 'B7(', 'B8(', ...
+    'B9(', 'B10(', 'B11(', 'B12('};
 
-% keyChans = [11, 46, 47, 4, 39, 38, 37, 3, 36];
-% for a set of 9 sensors centred on Fz
-% {FC1, FC2, FCz, Fz, F1, F2, AFz, AF3, AF4};
+% which channels do you want to use? 
+% currently written to loop through all scalp channels. 
+keyChans = 1:32; 
 
-keyHz = [4 7]; % theta is 4-7Hz.
-
-timeWindow = [60 160]; % N1 peak is ~110ms (but wavelet window is ~500ms)
-
-allConditions = {'B1(112)' , 'B2(114)' , 'B3(122)' , ...
-    'B4(124)' , 'B5(132)' , 'B6(134)'};
-
-% fixed values across all figures.
-colour_max = 3;
-colour_min = -1;
-colour_max_itc = 0.35;
-colour_min_itc = 0;
-
-% global colour scheme
-colScheme = 'parula';
-
-%% header info in which we load in e.g. config information
+%% header structure grabs file and config data
 
 % what's the relevant config file called?
-ConfigFileName = 'WIMR_Config_TalkListenCued';
+ConfigFileName = 'Config_Danielle_051022';
 
 Current_File_Path = pwd;
 addpath('Functions');
@@ -42,362 +31,116 @@ DataConfig = adjustConfigData(DataConfig);
 
 % and open eeglab to access the EEGlab functions
 eeglab;
-% shorten variable name
+% just shorten variable name
 SUB = DataConfig.SUB;
-load('chanlocs.mat'); % create variable "chanlocs"
-load('cndSUBS.mat'); % loads in two variants of SUB variable, but with only 
-% patients (SUB_patient) or only controls (SUB_control)
-% and with noisy participant (pid=126) already removed. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% manual override for troubleshooting.
 
-%% goal #1, plot  theta spatial topo during ERP peak (100-200ms) for patients
-for thisPID = 1:length(SUB_patient)
-    % loop through each needed file, load it, grab needed data, push it into
-    % some holder variable.
-    filename = ['TF_output' filesep SUB_patient{thisPID} '_TFdata.mat'];
-    load(filename); % create variable tf_data
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+for k = 1:length(SUB)
+    tic;
+    PIDfolder = [fileparts(pwd) filesep SUB{k}];
+    inputFile = [PIDfolder filesep SUB{k} '_ds_PREP_ica_corr_cbip_elist_bins_epoch_ar.set'];
     
-    for thisCND = 1:length(allConditions)
-        % want 64 chans, average over timeWindow, average over keyHz
-        time_idx = (tf_data.cond(thisCND).times >= timeWindow(1)) & ...
-            (tf_data.cond(thisCND).times <= timeWindow(2)) ;
-        freq_idx = (tf_data.cond(thisCND).freqs >= keyHz(1)) & ...
-            (tf_data.cond(thisCND).freqs <= keyHz(2)) ;
-        disp(['processing_cnd_' allConditions{thisCND} '_in_PID_' SUB_patient{thisPID} ])
-        for thisChan = 1:64
-            spatial_patient_ersp(thisPID, thisCND, thisChan) =  ...
-                mean(tf_data.cond(thisCND).chan(thisChan).ersp(freq_idx,time_idx), 'all', 'omitnan');
-            spatial_patient_itc(thisPID, thisCND, thisChan) =  ...
-                mean(tf_data.cond(thisCND).chan(thisChan).itc(freq_idx,time_idx), 'all', 'omitnan');
-        end % of channel by channel loop
-    end % of condition by condition loop
+    %% find each file and open it up
+    EEG = pop_loadset('filename',  inputFile);
     
-end % of PID loop
+    % each file is missing channel information for some reason, so add it now.
+    EEG = pop_chanedit(EEG, 'lookup',[Current_File_Path filesep 'SupportingDocs' filesep DataConfig.ChanLocs{1}]);
+    
+    %% separate  them out so each data set = 1 bin type.
+    
+    % first, select the epochs that we want. 
+    % populate a list with of the time-locking event per epoch.
+    
+    for thisCond = 1:length(allConditions)
+     cond2use = allConditions{thisCond};
+        
+    epochvect = cell(1,EEG.trials);
+    keepTrials = zeros(1,EEG.trials);
+    for i=1:EEG.trials
+        [~,t0] = min(abs(cell2mat(EEG.epoch(i).eventlatency)));
+        % epochvect(i) = EEG.epoch(i).eventtype{t0};
+        epochvect{i} = EEG.epoch(i).eventtype{t0};
+        % if strcmp(epochvect{i},cond2use)
+        if contains(epochvect{i},cond2use)
+            keepTrials(i) = 1;
+        end
+    end
+    
+    % limit our data to those epochs.
+    data  = EEG.data(:,:,logical(keepTrials));
 
-% create output folders if needed 
-if exist('TF_images', 'dir') == 7
+    
+    %%  prepare parameters for repeated tf call.
+    frames = EEG.pnts;
+    tlimits = [EEG.times(1) EEG.times(end)];
+    srate = EEG.srate;
+    % cycles = [3 0.5]; % standard parameters for now.
+    cycles = [1 0.5]; % allows us to get down into theta range.
+    % cycles = 0; % FFT with Hanning tapering (no wavelets)
+    
+    % move these to header later.
+    % keyChans = 1:64; 
+    freqRange = [0 30];
+    tempResolution = 200; % how many points to output on x-axis. (44s data, so 440 = 0.1s)
+    baseline = [-1000 0]; % baseline period measured in epoch time (ms)
+    
+    % time-freq for data, per channel.
+    % initialise some varialbes
+    tf_data.cond(thisCond).times = [];
+    tf_data.cond(thisCond).freqs = [];
+    
+    for thisChan = keyChans       
+        
+%         [ersp,itc,powbase,times,freqs,erspboot,itcboot,tfdata] = ...
+%             newtimef(data(thisChan,:,:),EEG.pnts, [tlimits], 256, cycles, ...
+%             'timesout', tempResolution,  'winsize', 128, ...
+%             'plotersp', 'off', 'plotitc', 'off', 'trialbase', 'on');
+        
+        % changed window size back to default (as don't have the luxury)
+        % but can buy some freq precision by increasing padratio. 
+        
+        [ersp,itc,powbase,times,freqs,erspboot,itcboot,tfdata] = ...
+            newtimef(data(thisChan,:,:),EEG.pnts, [tlimits], 256, cycles, ...
+            'timesout', tempResolution, 'padratio', 8, 'winsize', 80,  ...
+            'plotersp', 'off', 'plotitc', 'off', 'trialbase', 'on');
+        
+        %     if you want to plot the outputs, then use code of this form.
+        %     figure; contourf(times, freqs, ersp);
+        %     figure; contourf(times, freqs, abs(itc));
+        
+        tf_data.PID = SUB{k};
+        tf_data.cond(thisCond).chan(thisChan).lbl = EEG.chanlocs(thisChan).labels;
+        tf_data.cond(thisCond).chan(thisChan).ersp = ersp;
+        tf_data.cond(thisCond).chan(thisChan).itc = abs(itc);
+        % check to see if you need to write before writing. 
+        if isempty(tf_data.cond(thisCond).times) 
+          tf_data.cond(thisCond).times = times;  
+        end
+        
+        if isempty(tf_data.cond(thisCond).freqs) 
+          tf_data.cond(thisCond).freqs = freqs;  
+        end
+        
+        
+    end % of channel by channel loop
+end % of condition by condition loop
+
+% output per person.
+if exist('TF_output', 'dir') == 7
 else
-    mkdir 'TF_images'
+    mkdir 'TF_output'
 end
 
-save('TF_images/spatial_patient_ersp.mat', 'spatial_patient_ersp');
-save('TF_images/spatial_patient_itc.mat', 'spatial_patient_itc');
+outName = [pwd filesep 'TF_output' filesep SUB{k} '_TFdata.mat'];
+save(outName, 'tf_data');
+clear tf_data; % and then start over.
 
-% plot each condition
-% colour_max = max(spatial_patient_ersp(:));
-% colour_min = min(spatial_patient_ersp(:));
-% colour_max_itc = max(abs(spatial_patient_itc(:)));
-% colour_min_itc = min(abs(spatial_patient_itc(:)));
+disp(['PID ' SUB{k} ' performed in ' num2str(toc)    ' seconds' ]);
+end % of PID looping cycle
 
-for thisCND = 1:length(allConditions)
-    % draw each figure for ersp
-figure;
-topoplot( squeeze(mean(spatial_patient_ersp(:,thisCND,1:64),1, 'omitnan')), chanlocs); 
-colorbar;
-caxis([colour_min, colour_max]);
-colormap(colScheme);
-% name and save each figure.
-f = gcf;
-f.Units = 'inches';
-f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-fig_filename = ['TF_images' filesep 'Patient_ersp_' allConditions{thisCND} '_TargetHzTopoplot.png'];
-disp(['Saving topoimage image ' fig_filename]);
-exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
-close(gcf);
+% and save the chanlocs structure for later
+chanlocs = EEG.chanlocs;
+save('chanlocs.mat', 'chanlocs');
 
-% and output a spreadsheet of these values too. 
-spreadsheetData = squeeze(spatial_patient_ersp(:,thisCND,:));
-excelFilename = ['TF_images' filesep 'spatial_patient_ersp.xlsx'];
-writematrix(spreadsheetData, excelFilename, 'Sheet', allConditions{thisCND});
-writecell(SUB_patient', excelFilename, 'Sheet', 'SUBS');
-
-% draw each figure for itc
-figure;
-topoplot( squeeze(mean(abs(spatial_patient_itc(:,thisCND,:)),1, 'omitnan')), chanlocs); 
-colorbar;
-colormap(colScheme);
-caxis([colour_min_itc, colour_max_itc]);
-
-% name and save each figure.
-f = gcf;
-f.Units = 'inches';
-f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-fig_filename = ['TF_images' filesep 'Patient_itc_' allConditions{thisCND} '_TargetHzTopoplot.png'];
-disp(['Saving topoimage image ' fig_filename]);
-exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
-close(gcf);
-
-% and output a spreadsheet of these values too. 
-spreadsheetData = squeeze(abs(spatial_patient_itc(:,thisCND,:)));
-excelFilename = ['TF_images' filesep 'spatial_patient_itc.xlsx'];
-writematrix(spreadsheetData, excelFilename, 'Sheet', allConditions{thisCND});
-writecell(SUB_patient', excelFilename, 'Sheet', 'SUBS');
-end
-
-
-%% goal #2, plot  theta spatial topo during ERP peak (100-200ms) for patients
-for thisPID = 1:length(SUB_ctrl)
-    % loop through each needed file, load it, grab needed data, push it into
-    % some holder variable.
-    filename = ['TF_output' filesep SUB_ctrl{thisPID} '_TFdata.mat'];
-    load(filename); % create variable tf_data
-    
-    for thisCND = 1:length(allConditions)
-        % want 64 chans, average over timeWindow, average over keyHz
-        time_idx = (tf_data.cond(thisCND).times >= timeWindow(1)) & ...
-            (tf_data.cond(thisCND).times <= timeWindow(2)) ;
-        freq_idx = (tf_data.cond(thisCND).freqs >= keyHz(1)) & ...
-            (tf_data.cond(thisCND).freqs <= keyHz(2)) ;
-        disp(['processing_cnd_' allConditions{thisCND} '_in_PID_' SUB_patient{thisPID} ])
-        for thisChan = 1:64
-            spatial_ctrl_ersp(thisPID, thisCND, thisChan) =  ...
-                mean(tf_data.cond(thisCND).chan(thisChan).ersp(freq_idx,time_idx), 'all', 'omitnan');
-            spatial_ctrl_itc(thisPID, thisCND, thisChan) =  ...
-                mean(tf_data.cond(thisCND).chan(thisChan).itc(freq_idx,time_idx), 'all', 'omitnan');
-        end % of channel by channel loop
-    end % of condition by condition loop
-    
-end % of PID loop
-
-% create output folders if needed 
-if exist('TF_images', 'dir') == 7
-else
-    mkdir 'TF_images'
-end
-
-save('TF_images/spatial_ctrl_ersp.mat', 'spatial_ctrl_ersp');
-save('TF_images/spatial_ctrl_itc.mat', 'spatial_ctrl_itc');
-
-% plot each condition
-% colour_max = max(spatial_ctrl_ersp(:));
-% colour_min = min(spatial_ctrl_ersp(:));
-% colour_max_itc = max(abs(spatial_ctrl_itc(:)));
-% colour_min_itc = min(abs(spatial_ctrl_itc(:)));
-
-for thisCND = 1:length(allConditions)
-    % draw each figure for ersp
-figure;
-topoplot( squeeze(mean(spatial_ctrl_ersp(:,thisCND,1:64),1, 'omitnan')), chanlocs); 
-colorbar;
-colormap(colScheme);
-caxis([colour_min, colour_max]);
-
-% name and save each figure.
-f = gcf;
-f.Units = 'inches';
-f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-fig_filename = ['TF_images' filesep 'ctrl_ersp_' allConditions{thisCND} '_TargetHzTopoplot.png'];
-disp(['Saving topoimage image ' fig_filename]);
-exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
-close(gcf);
-
-% and output a spreadsheet of these values too. 
-spreadsheetData = squeeze(spatial_ctrl_ersp(:,thisCND,:));
-excelFilename = ['TF_images' filesep 'spatial_ctrl_ersp.xlsx'];
-writematrix(spreadsheetData, excelFilename, 'Sheet', allConditions{thisCND});
-writecell(SUB_ctrl', excelFilename, 'Sheet', 'SUBS');
-
-% draw each figure for itc
-figure;
-topoplot( squeeze(mean(abs(spatial_ctrl_itc(:,thisCND,:)),1, 'omitnan')), chanlocs); 
-colorbar;
-colormap(colScheme);
-caxis([colour_min_itc, colour_max_itc]);
-
-% name and save each figure.
-f = gcf;
-f.Units = 'inches';
-f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-fig_filename = ['TF_images' filesep 'ctrl_itc_' allConditions{thisCND} '_TargetHzTopoplot.png'];
-disp(['Saving topoimage image ' fig_filename]);
-exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
-close(gcf);
-
-% and output a spreadsheet of these values too. 
-spreadsheetData = squeeze(abs(spatial_ctrl_itc(:,thisCND,:)));
-excelFilename = ['TF_images' filesep 'spatial_ctrl_itc.xlsx'];
-writematrix(spreadsheetData, excelFilename, 'Sheet', allConditions{thisCND});
-writecell(SUB_ctrl', excelFilename, 'Sheet', 'SUBS');
-end
-
-
-%% goal 3, grab mean time-freq plot for whole epoch, all freqs for patients
-% first, patients
-% keyChans = [11, 46, 47, 4, 39, 38, 37, 3, 36];
-
-for thisPID = 1:length(SUB_patient)
-    % loop through each needed file, load it, grab needed data, push it into
-    % some holder variable.
-    filename = ['TF_output' filesep SUB_patient{thisPID} '_TFdata.mat'];
-    load(filename); % create variable tf_data
-    
-    for thisCND = 1:length(allConditions)
-        % want just the key channel, all times, all freqs.
-        disp(['processing_cnd_' allConditions{thisCND} '_in_PID_' SUB_patient{thisPID} ])
-        for thisChan_idx = 1:length(keyChans)
-            thisChan = keyChans(thisChan_idx);
-            holder_ersp(thisChan_idx, :, :) = tf_data.cond(thisCND).chan(thisChan).ersp;
-            holder_itc(thisChan_idx, :, :) = abs(tf_data.cond(thisCND).chan(thisChan).itc);
-        end % of channel by channel loop
-        % 4d: pid, cnd, time, freq.
-        temporal_patient_ersp(thisPID, thisCND, :, :) =  ...
-            mean(holder_ersp,1, 'omitnan');
-        % 4d: pid, cnd, time, freq.
-        temporal_patient_itc(thisPID, thisCND, :, :) =  ...
-            mean(holder_itc,1, 'omitnan');
-    end % of condition by condition loop
-end % of PID loop
-
-save('TF_images/temporal_patient_ersp.mat', 'temporal_patient_ersp');
-save('TF_images/temporal_patient_itc.mat', 'temporal_patient_itc');
-
-% plot each condition
-% colour_max = max(temporal_patient_ersp(:));
-% colour_min = min(temporal_patient_ersp(:));
-% colour_max_itc = max(abs(temporal_patient_itc(:)));
-% colour_min_itc = min(abs(temporal_patient_itc(:)));
-times = tf_data.cond(1).times;
-freqs = tf_data.cond(1).freqs;
-
-for thisCND = 1:length(allConditions)
-    % draw each figure for ersp
-figure;
-% 4d: pid, cnd, time, freq.
-contourf(times,freqs, squeeze(mean(temporal_patient_ersp(:,thisCND,:,:), 1, 'omitnan'))  );
-colorbar;
-colormap(colScheme);
-caxis([colour_min, colour_max]);
-
-% font properties
-ax = gca;
-ax.FontSize = 16;
-ax.FontWeight = 'bold';
-ax.LineWidth = 3;
-
-% name and save each figure.
-f = gcf;
-f.Units = 'inches';
-f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-fig_filename = ['TF_images' filesep 'Patient_ersp_' allConditions{thisCND} '_timefreq.png'];
-disp(['Saving timefreq image ' fig_filename]);
-exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
-close(gcf);
-
-% and output a spreadsheet of these values too. 
-
-% draw each figure for itc
-figure;
-contourf(times,freqs, squeeze(mean(temporal_patient_itc(:,thisCND,:,:), 1, 'omitnan'))  );
-colorbar;
-colormap(colScheme);
-caxis([colour_min_itc, colour_max_itc]);
-
-% font properties
-ax = gca;
-ax.FontSize = 16;
-ax.FontWeight = 'bold';
-ax.LineWidth = 3;
-
-% name and save each figure.
-f = gcf;
-f.Units = 'inches';
-f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-fig_filename = ['TF_images' filesep 'Patient_itc_' allConditions{thisCND} '_timefreq.png'];
-disp(['Saving timefreq image ' fig_filename]);
-exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
-close(gcf);
-
-% % and output a spreadsheet of these values too. 
-% spreadsheetData = squeeze(abs(spatial_patient_itc(:,thisCND,:)));
-% excelFilename = ['TF_images' filesep 'spatial_patient_itc.xlsx'];
-% writematrix(spreadsheetData, excelFilename, 'Sheet', allConditions{thisCND});
-end
-
-%% goal 4, grab mean time-freq plot for whole epoch, all freqs for control
-
-for thisPID = 1:length(SUB_ctrl)
-    % loop through each needed file, load it, grab needed data, push it into
-    % some holder variable.
-    filename = ['TF_output' filesep SUB_ctrl{thisPID} '_TFdata.mat'];
-    load(filename); % create variable tf_data
-    
-    for thisCND = 1:length(allConditions)
-        % want just the key channel, all times, all freqs.
-        disp(['processing_cnd_' allConditions{thisCND} '_in_PID_' SUB_ctrl{thisPID} ])
-        for thisChan_idx = 1:length(keyChans)
-            thisChan = keyChans(thisChan_idx);
-            holder_ersp(thisChan_idx, :, :) = tf_data.cond(thisCND).chan(thisChan).ersp;
-            holder_itc(thisChan_idx, :, :) = abs(tf_data.cond(thisCND).chan(thisChan).itc);
-        end % of channel by channel loop
-        % 4d: pid, cnd, time, freq.
-        temporal_ctrl_ersp(thisPID, thisCND, :, :) =  ...
-            mean(holder_ersp,1, 'omitnan');
-        % 4d: pid, cnd, time, freq.
-        temporal_ctrl_itc(thisPID, thisCND, :, :) =  ...
-            mean(holder_itc,1, 'omitnan');
-    end % of condition by condition loop
-end % of PID loop
-
-save('TF_images/temporal_ctrl_ersp.mat', 'temporal_ctrl_ersp');
-save('TF_images/temporal_ctrl_itc.mat', 'temporal_ctrl_itc');
-
-% plot each condition
-% colour_max = max(temporal_ctrl_ersp(:));
-% colour_min = min(temporal_ctrl_ersp(:));
-% colour_max_itc = max(abs(temporal_ctrl_itc(:)));
-% colour_min_itc = min(abs(temporal_ctrl_itc(:)));
-times = tf_data.cond(1).times;
-freqs = tf_data.cond(1).freqs;
-
-for thisCND = 1:length(allConditions)
-    % draw each figure for ersp
-figure;
-% 4d: pid, cnd, time, freq.
-contourf(times,freqs, squeeze(mean(temporal_ctrl_ersp(:,thisCND,:,:), 1, 'omitnan'))  );
-colorbar;
-colormap(colScheme);
-caxis([colour_min, colour_max]);
-
-% font properties
-ax = gca;
-ax.FontSize = 16;
-ax.FontWeight = 'bold';
-ax.LineWidth = 3;
-
-% name and save each figure.
-f = gcf;
-f.Units = 'inches';
-f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-fig_filename = ['TF_images' filesep 'Ctrl_ersp_' allConditions{thisCND} '_timefreq.png'];
-disp(['Saving timefreq image ' fig_filename]);
-exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
-close(gcf);
-
-% and output a spreadsheet of these values too. 
-
-% draw each figure for itc
-figure;
-contourf(times,freqs, squeeze(mean(temporal_ctrl_itc(:,thisCND,:,:), 1, 'omitnan'))  );
-colorbar;
-colormap(colScheme);
-caxis([colour_min_itc, colour_max_itc]);
-
-% font properties
-ax = gca;
-ax.FontSize = 16;
-ax.FontWeight = 'bold';
-ax.LineWidth = 3;
-
-% name and save each figure.
-f = gcf;
-f.Units = 'inches';
-f.OuterPosition = [0.5 0.5 5.5 5.5]; % make the figure 5 inches in size.
-fig_filename = ['TF_images' filesep 'Ctrl_itc_' allConditions{thisCND} '_timefreq.png'];
-disp(['Saving timefreq image ' fig_filename]);
-exportgraphics(f,fig_filename,'Resolution',300); % set to 300dpi and save.
-close(gcf);
-
-% % and output a spreadsheet of these values too. 
-% spreadsheetData = squeeze(abs(spatial_patient_itc(:,thisCND,:)));
-% excelFilename = ['TF_images' filesep 'spatial_patient_itc.xlsx'];
-% writematrix(spreadsheetData, excelFilename, 'Sheet', allConditions{thisCND});
-end
