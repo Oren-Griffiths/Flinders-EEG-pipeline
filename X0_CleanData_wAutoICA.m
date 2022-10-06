@@ -2,7 +2,7 @@
 global DataConfig
 
 % which experiment are we going to run?
-ConfigFileName = 'Config_Danielle_051022';
+ConfigFileName = 'Config_Test';
 
 % what do we need to do?
 % IRRELEVANT NOW. With AutoICA it's all one mode.
@@ -54,7 +54,6 @@ currentTime = clock;
 % the 5th element of tVar is the current time in minutes.
 % calculates minutes since midnight.
 StartTime = currentTime(4)*60 + currentTime(5);
-
 
 %% do the preprocessing via PREP pipeline (or equivalent if PREP is
 % excluded). Also, can't do this parallel, as PREP calls up a
