@@ -97,10 +97,20 @@ delete tempFilename;
 writecell(AR_SVT,tempFilename);
 
 %% finally, initialize an observed ICA component file too.
-% but only if it's during the PreICA stage as you need to manually enter
-% data in between PreICA and PostICA stages.
-if strcmp(DataConfig.mode, 'PreICA') == 1
-    if DataConfig.ResetICAcomponents == 1
+if DataConfig.ResetICAcomponents == 1
+    % leave it blank except for row numbers per subject.
+    ICAcomps =  cell(NoOfSubs+1, 2);
+    % add in the appropriate headers.
+    headers = {'SUBID', 'Components'};
+    ICAcomps(1,1:2) = headers;
+    % add in subject numbers
+    ICAcomps(2:NoOfSubs+1,1) = DataConfig.SUB';
+    % output that cell into an excel file.
+    writecell(ICAcomps,[outFilePath filesep 'ICA_components.xlsx']);
+else % check that there is actually a file to spare.
+    if exist([outFilePath filesep 'ICA_components.xlsx']) > 0
+        % if there's a file, just leave the ICA components alone.
+    else % but if there's not, write a blank one anyway.
         % leave it blank except for row numbers per subject.
         ICAcomps =  cell(NoOfSubs+1, 2);
         % add in the appropriate headers.
@@ -110,32 +120,15 @@ if strcmp(DataConfig.mode, 'PreICA') == 1
         ICAcomps(2:NoOfSubs+1,1) = DataConfig.SUB';
         % output that cell into an excel file.
         writecell(ICAcomps,[outFilePath filesep 'ICA_components.xlsx']);
-    else % check that there is actually a file to spare.
-        if exist([outFilePath filesep 'ICA_components.xlsx']) > 0
-            % if there's a file, just leave the ICA components alone.
-        else % but if there's not, write a blank one anyway.
-            % leave it blank except for row numbers per subject.
-            ICAcomps =  cell(NoOfSubs+1, 2);
-            % add in the appropriate headers.
-            headers = {'SUBID', 'Components'};
-            ICAcomps(1,1:2) = headers;
-            % add in subject numbers
-            ICAcomps(2:NoOfSubs+1,1) = DataConfig.SUB';
-            % output that cell into an excel file.
-            writecell(ICAcomps,[outFilePath filesep 'ICA_components.xlsx']);
-        end
-    end 
-    
-    % create a participant mask file that defaults to including everyone. 
-    % use the ICAcomps variable to do it because it's very similar.. 
-    ICAcomps(2:end,2) = {1};
-    % and initialize and write the variable. 
-    tempFilename = [outFilePath filesep 'PIDmask.xlsx'];
-    delete tempFilename;
-    writecell(ICAcomps,tempFilename);
+    end
+end
 
-    
-end % of PreICA mode check
-
+% create a participant mask file that defaults to including everyone.
+% use the ICAcomps variable to do it because it's very similar..
+ICAcomps(2:end,2) = {1};
+% and initialize and write the variable.
+tempFilename = [outFilePath filesep 'PIDmask.xlsx'];
+delete tempFilename;
+writecell(ICAcomps,tempFilename);
 
 end
