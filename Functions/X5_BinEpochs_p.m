@@ -49,33 +49,7 @@ clearvars -except DataConfig SUB;
             end % label by label loop
         end
         
-        %% an extra correction for Natalie 2019 data set.
-        % For some reason, some key triggers are encoded as 'Condition 22'
-        % and some are encoded as '22'. Doesn't matter, except edftype is
-        % wrong for many entries. 
-        
-        % relevant triggers
-        TriggersToCorrect = {'11', 'condition 11', '12', 'condition 12', ...
-            '21', 'condition 21', '22', 'condition 22', ... 
-            '31', 'condition 31', '32', 'condition 32', ...
-            '41', 'condition 41', '42', 'condition 42'}; 
-        
-        ValuesToAdd = [11, 11, 12, 12, ...
-            21, 21, 22, 22, ...
-            31, 31, 32, 32, ...
-            41, 41, 42, 42];
-        
-        
-        
-        for ThisTrigger = 1:length(TriggersToCorrect)
-            for ThisEvent = 1:numel(EEG.event)
-                if strcmp (EEG.event(ThisEvent).type,TriggersToCorrect(ThisTrigger))
-                    EEG.event(ThisEvent).type = num2str(ValuesToAdd(ThisTrigger));
-                    EEG.event(ThisEvent).edftype = ValuesToAdd(ThisTrigger);
-                end
-            end % going through list of events
-        end % cycling through list of relevant triggers
-        
+         
         %Create EEG Event List containing a record of all event codes and their timing
         EEG  = pop_creabasiceventlist( EEG , 'AlphanumericCleaning', 'on', 'BoundaryNumeric', { -99 }, 'BoundaryString', { 'boundary' }, 'Eventlist', [Subject_Path SUB{i} '_Eventlist.txt'] );
         [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 2, 'setname', [SUB{i} '_ds_PREP_ica_corr_cbip_elist'], 'savenew', [Subject_Path SUB{i} '_ds_PREP_ica_corr_cbip_elist.set'], 'gui', 'off');

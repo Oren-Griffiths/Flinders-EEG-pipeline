@@ -106,6 +106,7 @@ clearvars -except DataConfig SUB;
             EEG = pop_subcomp( EEG, [Components], 0, 0);
             
         end
+        
         % % and save the IC_corrected data (if needed).
         % EEG = pop_saveset( EEG, 'filename', [SUB{i} '_ds_PREP_ica_corr.set'],'filepath', Subject_Path);
 
@@ -113,6 +114,11 @@ clearvars -except DataConfig SUB;
                 
         % add HEOG 
         switch DataConfig.TotalChannels{1} 
+            
+            case 18
+                EEG.data(end+1,:) = EEG.data(22,:) -  EEG.data(21,:);
+            case 20
+                EEG.data(end+1,:) = EEG.data(26,:) -  EEG.data(27,:); 
             case 32
                 EEG.data(end+1,:) = EEG.data(36,:) - EEG.data(35,:);
             case 64
@@ -125,12 +131,16 @@ clearvars -except DataConfig SUB;
         [ALLEEG EEG CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
         eeglab redraw
         % add VEOG
-                switch DataConfig.TotalChannels{1} 
+        switch DataConfig.TotalChannels{1}
+            case 18
+                EEG.data(end+1,:) = EEG.data(23,:) -  EEG.data(9,:);
+            case 20
+                EEG.data(end+1,:) = EEG.data(25,:) -  EEG.data(1,:);
             case 32
-                 EEG.data(end+1,:) = EEG.data(37,:) - EEG.data(1,:);
+                EEG.data(end+1,:) = EEG.data(37,:) - EEG.data(1,:);
             case 64
                 EEG.data(end+1,:) = EEG.data(69,:) - EEG.data(1,:);
-                end
+        end
         EEG.nbchan = size(EEG.data,1);
         if ~isempty(EEG.chanlocs)
             EEG.chanlocs(end+1).labels = 'corr_VEOG';
@@ -138,7 +148,7 @@ clearvars -except DataConfig SUB;
         [ALLEEG EEG CURRENTSET] = eeg_store(ALLEEG, EEG, CURRENTSET);
         eeglab redraw
         
-        %Add channel location information corresponding to the 3-D coordinates of the electrodes based on 10-10 International System site locations
+        % Add channel location information corresponding to the 3-D coordinates of the electrodes based on 10-10 International System site locations
         % (or rather  re-add it, as we've changed the channels in this new file). 
         EEG = pop_chanedit(EEG, 'lookup',[Current_File_Path filesep 'SupportingDocs' filesep DataConfig.ChanLocs{1}]);
         EEG = pop_saveset(EEG, 'filename', [SUB{i} '_ds_PREP_ica_corr_cbip.set'],'filepath', Subject_Path);
@@ -155,7 +165,7 @@ clearvars -except DataConfig SUB;
         ylim([-1000, 1000]);
         % and save a picture.
         save2pdf([Subject_Path filesep 'Figures' filesep 'X4_' SUB{i} '_RawVsCorrected_VEOG.pdf']);
-
+        close(gcf);
     end % End subject loop
 
 end

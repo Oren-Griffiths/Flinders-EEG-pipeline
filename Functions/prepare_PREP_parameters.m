@@ -61,7 +61,18 @@ PrepConfig.referenceIn.correlationWindowSeconds = 1;
 % must have at least modest correlations between neighbouring channels.
 % Could reduce for 32 channel montage, and will need to reduce or turn off
 % for e.g. VR montage with far fewer channels. 
-PrepConfig.referenceIn.correlationThreshold = 0.4;
+switch DataConfig.TotalChannels{1}
+    case 18
+        % effectively turn it off for VR loose montages
+        PrepConfig.referenceIn.correlationThreshold = 0.01;
+    case 20
+        % effectively turn it off for VR loose montages
+        PrepConfig.referenceIn.correlationThreshold = 0.01;
+    case 32
+        PrepConfig.referenceIn.correlationThreshold = 0.4;
+    case 64 % default value is 0.4
+        PrepConfig.referenceIn.correlationThreshold = 0.4;
+end 
 PrepConfig.referenceIn.badTimeThreshold = 0.01;
 
 % RANSAC is finding quite a few more channels than other criteria, and I

@@ -207,7 +207,7 @@ for i = 1:length(SUB)
         code_counts = accumarray(ic,1);
         countsPerCode = array2table([C, code_counts]);
         countsPerCode.Properties.VariableNames(1:2) = {'event','count'};
-        outFileName = [Subject_Path SUB{i} '_eventCounts.csv'];
+        outFileName = [Subject_Path SUB{i} '_eventCounts_initial.csv'];
         writetable(countsPerCode, outFileName);
         % do the same, but with 256 adjustment.
         [C,ia,ic] = unique(eventTable.corrCodes);

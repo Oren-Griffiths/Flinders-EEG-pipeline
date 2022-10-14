@@ -63,6 +63,18 @@ SUB = DataConfig.SUB;
                             disp('No .xdf file found');
                             return
                         end
+                    case '.edf'
+                        FileToOpen = [Subject_Path  SUB{i} '.edf'];
+                        if isfile(FileToOpen)
+                            EEG = pop_biosig(FileToOpen, 'ref', DataConfig.KeyChans{3}); 
+                            % adjust the channel montage immediately so
+                            % labels make sense and scalp chans together.
+                            EEG = DSI_addChans(EEG); % see Functions.
+                            EEG = eeg_checkset( EEG );
+                        else
+                            disp('No .edf file found');
+                            return
+                        end
                 end
             end
             
@@ -113,6 +125,9 @@ SUB = DataConfig.SUB;
             case '.xdf'
                 NoRefChanLbls = [Current_File_Path filesep 'SupportingDocs' ...
                     filesep 'ChannelsFor' num2str(DataConfig.TotalChannels{1}) '_NoRef_XDF.txt'];
+            case '.edf'
+                NoRefChanLbls = [Current_File_Path filesep 'SupportingDocs' ...
+                    filesep 'ChannelsFor' num2str(DataConfig.TotalChannels{1}) '_NoRef_EDF.txt'];
         end
         % apply that montage.
         EEG = pop_eegchanoperator( EEG, NoRefChanLbls);
