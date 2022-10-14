@@ -212,15 +212,19 @@ SUB = DataConfig.SUB;
         
         % do simple FFT of pre-filtered data and save it for later drawing.
         tempvar = [];
-        unfilt_FFT = zeros(DataConfig.TotalChannels{1}, length(abs(SimpleFFT(rawEEG.data(1,:)))));
-        for ThisChan = DataConfig.firstScalp:DataConfig.lastScalp
+        unfilt_FFT = NaN(DataConfig.TotalChannels{1}, length(abs(SimpleFFT(rawEEG.data(1,:)))));
+        % add mastoids to list of channels to filter
+        chansToFilter = [DataConfig.KeyChans{1}:DataConfig.KeyChans{2},  DataConfig.KeyChans{3}, DataConfig.KeyChans{4}];
+        % do an FFT of the unfiltered data. 
+        for ThisChan = chansToFilter
             tempvar = abs(SimpleFFT(rawEEG.data(ThisChan,:)));
             unfilt_FFT(ThisChan,:) = tempvar;
         end
-        unfilt_FFT = mean(unfilt_FFT,1);
+        unfilt_FFT = mean(unfilt_FFT,1, 'omitnan');
         freqs = [0:(EEG.srate/2)/(length(unfilt_FFT)-1):EEG.srate/2];
         
-        EEG  = pop_basicfilter( EEG,  DataConfig.KeyChans{1}:DataConfig.KeyChans{2} , 'Boundary', 'boundary', ...
+        % filter the scalp channels and mastoids
+        EEG  = pop_basicfilter( EEG, chansToFilter  , 'Boundary', 'boundary', ...
             'Cutoff',  [DataConfig.HPfilter{1} DataConfig.LPfilter{1}], ...
             'Design', 'butter', 'Filter', 'bandpass', 'Order',  DataConfig.FiltOrder{1}, 'RemoveDC', 'on' );
         
@@ -230,8 +234,8 @@ SUB = DataConfig.SUB;
 
 
         % do simple FFT of post-filtered data and save it for later
-        filt_FFT = zeros(DataConfig.TotalChannels{1}, length(abs(SimpleFFT(EEG.data(1,:)))));
-        for ThisChan = DataConfig.firstScalp:DataConfig.lastScalp
+        filt_FFT = NaN(DataConfig.TotalChannels{1}, length(abs(SimpleFFT(EEG.data(1,:)))));
+        for ThisChan = chansToFilter
             tempvar = abs(SimpleFFT(EEG.data(ThisChan,:)));
             filt_FFT(ThisChan,:) = tempvar;
         end
